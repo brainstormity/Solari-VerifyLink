@@ -28,23 +28,23 @@ You need API keys for Solari and DeepSeek, and a PostgreSQL database url.
 If you don't provide them, the app will run in **Mock Mode** using simulated data for local UI development.
 
 1. Clone the repository and install dependencies:
-\`\`\`bash
+```bash
 npm install
-\`\`\`
+```
 
 2. Set up your environment variables:
-Create a \`.env.local\` file in the root directory:
-\`\`\`env
+Create a `.env.local` file in the root directory:
+```env
 SOLARI_API_KEY=your_solari_api_key
 DEEPSEEK_API_KEY=your_deepseek_api_key
 POSTGRES_URL=your_postgres_connection_string
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-\`\`\`
+```
 
 3. Run the development server:
-\`\`\`bash
+```bash
 npm run dev
-\`\`\`
+```
 
 4. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
