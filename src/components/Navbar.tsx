@@ -66,13 +66,12 @@ export default function Navbar() {
 
         {/* Right: Solari Status Beacon */}
         <div className="flex items-center gap-2 shrink-0">
-          <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-zinc-900/80 border border-white/[0.08] text-[10px] sm:text-[11px] font-mono text-zinc-400">
+          <div className="flex items-center gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-zinc-900/80 border border-white/[0.08] text-[11px] font-mono text-zinc-400">
             <span className="relative flex h-2 w-2 shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
             </span>
             <span className="hidden sm:inline">MicroVMs Online</span>
-            <span className="sm:hidden text-emerald-400 font-semibold">Online</span>
           </div>
         </div>
 
