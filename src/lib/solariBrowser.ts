@@ -27,10 +27,10 @@ export async function inspectUrlWithSolari(targetUrl: string) {
   const solari = new Solari({ apiKey: config.SOLARI_API_KEY });
   let sessionId: string | null = null;
   let browser: any = null;
+  const startTime = Date.now();
 
-  // Global safety watchdog timer to prevent hangs
-  const scanPromise = (async () => {
-    // 1. Explicitly acquire session ID first so we have the handle immediately
+  try {
+    // 1. Explicitly acquire session ID first
     const rawSession = await solari.sessions.create({ stealth: true, captcha: true });
     sessionId = rawSession.id;
 
@@ -39,55 +39,72 @@ export async function inspectUrlWithSolari(targetUrl: string) {
     const sessionWrapper = new BrowserSession(solari, rawSession, browser);
 
     const context = sessionWrapper.contexts()[0] || await sessionWrapper.newContext();
-    const page = await context.newPage();
+    const page = context.pages()[0] || await context.newPage();
+
+    // Set strict per-operation timeouts (8s max) to prevent any hang
+    page.setDefaultTimeout(8000);
+    page.setDefaultNavigationTimeout(8000);
 
     const redirects: string[] = [];
     page.on("response", (res: any) => {
-      if ([301, 302, 307, 308].includes(res.status())) {
-        redirects.push(res.url());
-      }
+      try {
+        if ([301, 302, 307, 308].includes(res.status())) {
+          redirects.push(res.url());
+        }
+      } catch (e) {}
     });
 
-    const startTime = Date.now();
     try {
-      await page.goto(normalizedUrl, { waitUntil: "domcontentloaded", timeout: 12000 });
-    } catch (navErr) {
-      console.warn(`Navigation warning on ${normalizedUrl}:`, navErr);
+      await page.goto(normalizedUrl, { waitUntil: "domcontentloaded", timeout: 8000 });
+    } catch (navErr: any) {
+      console.warn(`Navigation to ${normalizedUrl} ended early:`, navErr?.message || navErr);
     }
     
     let finalUrl = normalizedUrl;
     let title = "";
     try {
-      finalUrl = page.url() || normalizedUrl;
-      title = await page.title();
+      if (!page.isClosed()) {
+        finalUrl = page.url() || normalizedUrl;
+        title = await page.title().catch(() => "");
+      }
     } catch (e) {}
     
-    // Screenshot
+    // Screenshot with tight 3s timeout
     let screenshotBase64 = "";
     try {
-      const screenshot = await page.screenshot({ type: "jpeg", quality: 75, fullPage: false });
-      screenshotBase64 = screenshot.toString("base64");
-    } catch (e) {
-      console.warn("Screenshot capture warning:", e);
+      if (!page.isClosed()) {
+        const screenshot = await page.screenshot({ type: "jpeg", quality: 75, fullPage: false, timeout: 3000 });
+        screenshotBase64 = screenshot.toString("base64");
+      }
+    } catch (e: any) {
+      console.warn("Screenshot capture skipped:", e?.message || e);
     }
     
-    // Extract DOM
+    // Extract DOM with tight timeout
     let domExcerpt: {
       forms: Array<{ action: string; method: string; inputs: Array<{ name: string; type: string }> }>;
       bodyText: string;
     } = { forms: [], bodyText: "" };
+
     try {
-      domExcerpt = await page.evaluate(() => {
-        const forms = Array.from(document.querySelectorAll("form")).map(f => ({
-          action: f.action,
-          method: f.method,
-          inputs: Array.from(f.querySelectorAll("input")).map(i => ({ name: i.name, type: i.type }))
-        }));
-        const bodyText = document.body ? document.body.innerText.slice(0, 3000) : "";
-        return { forms, bodyText };
-      });
-    } catch (e) {
-      console.warn("DOM extraction warning:", e);
+      if (!page.isClosed()) {
+        domExcerpt = await Promise.race([
+          page.evaluate(() => {
+            const forms = Array.from(document.querySelectorAll("form")).map(f => ({
+              action: f.action,
+              method: f.method,
+              inputs: Array.from(f.querySelectorAll("input")).map(i => ({ name: i.name, type: i.type }))
+            }));
+            const bodyText = document.body ? document.body.innerText.slice(0, 3000) : "";
+            return { forms, bodyText };
+          }),
+          new Promise<{ forms: any[]; bodyText: string }>((_, reject) =>
+            setTimeout(() => reject(new Error("DOM eval timeout")), 2500)
+          )
+        ]);
+      }
+    } catch (e: any) {
+      console.warn("DOM extraction skipped:", e?.message || e);
     }
 
     const latencyMs = Date.now() - startTime;
@@ -100,17 +117,22 @@ export async function inspectUrlWithSolari(targetUrl: string) {
       domExcerpt,
       latencyMs
     };
-  })();
-
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error("Solari Browser inspection timed out after 22s")), 22000);
-  });
-
-  try {
-    return await Promise.race([scanPromise, timeoutPromise]);
+  } catch (error: any) {
+    console.error("Browser inspection encountered error, returning safe baseline:", error?.message || error);
+    return {
+      finalUrl: normalizedUrl,
+      title: "Host Unreachable / Connection Dropped",
+      redirects: [],
+      screenshotBase64: "",
+      domExcerpt: {
+        forms: [],
+        bodyText: `Target host connection failed or dropped during zero-trust inspection: ${error?.message || "Timeout"}`,
+      },
+      latencyMs: Date.now() - startTime,
+    };
   } finally {
     // ----------------------------------------------------
-    // BULLETPROOF SESSION TEARDOWN & REAPING PIPELINE
+    // BULLETPROOF IMMEDIATE TEARDOWN PIPELINE
     // ----------------------------------------------------
     if (browser) {
       try {
@@ -120,12 +142,12 @@ export async function inspectUrlWithSolari(targetUrl: string) {
 
     if (sessionId) {
       const activeId = sessionId;
-      // 1. Call SDK releaseAndWait
+      // 1. SDK releaseAndWait
       try {
         await solari.sessions.releaseAndWait(activeId).catch(() => {});
       } catch (e) {}
 
-      // 2. Direct Fallback HTTP DELETE to Solari Gateway to guarantee termination
+      // 2. Direct Fallback HTTP DELETE to Solari Gateway to guarantee cloud termination
       try {
         await fetch(`https://api.getsolari.com/sessions/${encodeURIComponent(activeId)}`, {
           method: "DELETE",

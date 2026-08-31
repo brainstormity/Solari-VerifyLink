@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ShieldCheck, FileText, ScanLine, ExternalLink } from 'lucide-react';
+import { ShieldCheck, FileText, ScanLine } from 'lucide-react';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -64,22 +64,16 @@ export default function Navbar() {
           </Link>
         </div>
 
-        {/* Right: Solari Status & External Links */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900/80 border border-white/[0.08] text-[11px] font-mono text-zinc-400">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>MicroVMs Online</span>
+        {/* Right: Solari Status Beacon */}
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-zinc-900/80 border border-white/[0.08] text-[10px] sm:text-[11px] font-mono text-zinc-400">
+            <span className="relative flex h-2 w-2 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            </span>
+            <span className="hidden sm:inline">MicroVMs Online</span>
+            <span className="sm:hidden text-emerald-400 font-semibold">Online</span>
           </div>
-
-          <a
-            href="https://github.com/solari-sdk"
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-1 text-xs font-semibold text-zinc-300 hover:text-white bg-zinc-900/80 hover:bg-zinc-800 border border-white/[0.08] px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl transition-all"
-          >
-            <span className="hidden sm:inline">GitHub</span>
-            <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
-          </a>
         </div>
 
       </div>
