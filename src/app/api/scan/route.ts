@@ -27,8 +27,8 @@ export async function POST(req: NextRequest) {
       };
       await saveReport(report);
 
-      // Simulate realistic inspection process timing without calling external APIs
-      await new Promise((resolve) => setTimeout(resolve, 2200));
+      // Simulate realistic microVM + LLM inspection process timing (~4s) without calling external APIs
+      await new Promise((resolve) => setTimeout(resolve, 4000));
       return NextResponse.json({ id: matchingDemoId });
     }
 

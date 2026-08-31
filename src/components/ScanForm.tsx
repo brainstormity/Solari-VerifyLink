@@ -50,7 +50,7 @@ export default function ScanForm() {
     // Dynamic progress ticker
     const progressInterval = setInterval(() => {
       setStep((prev) => (prev < 4 ? prev + 1 : prev));
-    }, 500);
+    }, 750);
 
     try {
       const res = await fetch('/api/scan', {
@@ -62,12 +62,12 @@ export default function ScanForm() {
       const data = await res.json();
       
       clearInterval(progressInterval);
-      setStep(5); // Complete
+      setStep(5); // Complete all 5 steps
 
       if (data.id) {
         setTimeout(() => {
           router.push(`/report/${data.id}`);
-        }, 400);
+        }, 600);
       } else {
         alert(data.error || "Scan failed");
         setIsScanning(false);
