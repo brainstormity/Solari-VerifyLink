@@ -15,6 +15,14 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "VerifyLink — Instant Zero-Trust Scam & Link Inspector",
   description: "Securely inspect suspicious URLs with isolated Solari microVMs and AI.",
+  icons: {
+    icon: [
+      { url: "/verifylink-logo.png", type: "image/png" },
+      { url: "/icon.png", type: "image/png" },
+    ],
+    shortcut: "/verifylink-logo.png",
+    apple: "/verifylink-logo.png",
+  },
 };
 
 export default function RootLayout({

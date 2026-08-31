@@ -4,8 +4,7 @@ VerifyLink is a highly polished web application that allows users to submit susp
 
 ## Architecture
 
-![VerifyLink Architecture](https://raw.githubusercontent.com/solari-sdk/solari-cookbook/main/verifylink-architecture.png)
-*(Note: Architecture representation)*
+![VerifyLink Architecture](./public/verifylink-architecture.png)
 
 1. **User Input:** User pastes a link on the Next.js UI.
 2. **Solari Cloud Browser (< 3s):** Connects via Playwright to an isolated cloud browser in stealth mode. Tracks redirects, captures screenshots, and extracts the DOM.
