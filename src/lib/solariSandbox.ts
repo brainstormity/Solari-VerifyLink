@@ -17,7 +17,7 @@ export async function runSandboxForensics(domain: string) {
   const sandboxPromise = (async () => {
     // 1. Create sandbox with short server-side TTL timeout
     sandbox = await sandboxClient.create({ template: "base", timeoutMs: 30000 } as any);
-    sandboxId = sandbox.id;
+    sandboxId = sandbox.sandboxId || sandbox.id || sandbox.session?.id || null;
 
     // 2. Run isolated DNS and WHOIS commands with per-command bounds
     let dnsOutput = "";
@@ -70,8 +70,8 @@ export async function runSandboxForensics(domain: string) {
       } catch (e) {}
     }
 
-    if (sandboxId) {
-      const activeId = sandboxId;
+    const activeId = sandboxId || sandbox?.sandboxId || sandbox?.id;
+    if (activeId) {
       // 1. SDK kill
       try {
         await sandboxClient.kill(activeId).catch(() => {});
