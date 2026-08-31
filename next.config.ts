@@ -1,7 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  serverExternalPackages: [
+    "playwright-core",
+    "@solarisdk/browser",
+    "@solarisdk/sandbox",
+    "patchright-core",
+    "electron",
+    "chromium-bidi"
+  ],
 };
 
 export default nextConfig;

@@ -9,9 +9,20 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@solarisdk/browser": "^0.1.1",
+    "@solarisdk/sandbox": "^0.1.2",
+    "@types/pg": "^8.23.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "^13.1.1",
+    "lucide-react": "^1.38.0",
     "next": "16.3.4",
+    "openai": "^7.8.0",
+    "pg": "^8.23.0",
+    "playwright-core": "^1.59.0",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
