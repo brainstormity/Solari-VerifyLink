@@ -15,10 +15,6 @@ export default function Home() {
 
         {/* Hero Header */}
         <div className="text-center space-y-4 sm:space-y-6 mb-8 sm:mb-12 relative z-10 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] sm:text-xs font-mono font-bold tracking-wide">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>SOLARI MICROVM CLUSTER ONLINE</span>
-          </div>
           
           <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tight text-white leading-[1.1]">
             Verify before you <br />

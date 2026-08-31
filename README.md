@@ -54,23 +54,27 @@ npm run dev
 - **AI Forensics:** DeepSeek V4 Flash (`openai` SDK), Zod validation
 - **Persistence:** PostgreSQL (`pg`) with automatic in-memory caching fallback
 
-## Future Roadmap & Extending Threat Intelligence
+## Expanding Beyond the Base Version
 
-VerifyLink is designed as an extensible zero-trust foundation. The threat classification engine can be continuously expanded and refined over time:
+> **Note on Current Version & Scope:**  
+> This current release is a **foundational / base version** showcasing how ephemeral cloud browser microVMs and isolated sandbox environments can be chained with modern LLM reasoning. The core architecture is deliberately built to be modular and can be substantially expanded into a much stronger, enterprise-grade threat detection, active payload detonation, and in-depth forensic testing platform.
 
-- **Specialized Threat Fine-Tuning:** Training and fine-tuning dedicated classification models on evolving phishing kits, deceptive e-commerce clones, and brand impersonation vectors.
-- **Deeper Behavioral Heuristics:** Adding automated interaction triggers (e.g. simulated clicks on popups, form submission traps, and iframe exfiltration monitoring).
-- **SSL / TLS Certificate Graph:** Integrating deeper cryptographic analysis of certificate revocation lists (CRL), intermediate CAs, and ASN reputation scores.
-- **Crowdsourced Threat Feeds:** Integrating decentralized blocklists and threat intelligence streams.
+The platform is designed to be expanded across several dimensions:
+
+- **Deeper Active Detonation & Multi-Step Testing:** Simulating automated multi-step checkout interactions, testing fake credit card submissions to catch exfiltration webhooks, and interacting with evasive popup overlays.
+- **Specialized Threat Model Fine-Tuning:** Training and fine-tuning dedicated classification models on evolving phishing kits, typosquatting domains, and zero-day counterfeit e-commerce clones.
+- **Advanced Forensic Telemetry & Network Dumps:** Generating downloadable PCAP network trace logs, full HAR archives, and interactive session replay video recordings directly from the Solari microVM.
+- **SSL / TLS Certificate Graph Analysis:** Integrating deeper cryptographic analysis of certificate revocation lists (CRL), intermediate CAs, and ASN reputation clusters.
+- **Real-Time Threat Intelligence Feeds:** Ingesting live feeds from decentralized threat registries, antiphishing workgroups, and browser telemetry databases.
 
 ## Contributing
 
-Contributions, feature suggestions, and pull requests are warmly welcome! If you have ideas for improving the threat analysis prompts, adding new security pillars, or optimizing microVM execution speed:
+Contributions, feature suggestions, and pull requests are warmly welcome! If you want to contribute new threat detection heuristics, improve sandbox commands, or add new forensic pillars:
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/threat-engine-upgrade`)
-3. Commit your changes (`git commit -m 'Add new dark pattern detection rule'`)
-4. Push to the branch (`git push origin feature/threat-engine-upgrade`)
+2. Create your feature branch (`git checkout -b feature/advanced-threat-heuristics`)
+3. Commit your changes (`git commit -m 'Add multi-step form detonation logic'`)
+4. Push to the branch (`git push origin feature/advanced-threat-heuristics`)
 5. Open a **Pull Request**
 
 ---
