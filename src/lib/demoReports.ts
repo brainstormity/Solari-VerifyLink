@@ -114,6 +114,36 @@ export const DEMO_REPORTS: Record<string, ScanReport> = {
       browserLatencyMs: 1100,
       totalScanTimeMs: 2300,
     },
+    networkForensics: {
+      ip: '17.253.144.10',
+      server: 'Apple Web Server / AkamaiGHost',
+      sslIssuer: 'Apple Public EV Server RSA CA 1 - G1',
+      sslProtocol: 'TLS 1.3',
+      sslValid: true,
+      domainAge: '37 years old (1987)',
+      creationDate: '1987-02-19T05:00:00Z',
+      registrar: 'CSC Corporate Domains, Inc.',
+    },
+    formForensics: {
+      totalForms: 1,
+      forms: [
+        {
+          action: 'https://www.apple.com/shop/bag',
+          method: 'POST',
+          inputs: [{ name: 'item_id', type: 'hidden' }],
+          isCrossDomain: false,
+        },
+      ],
+      externalScriptCount: 8,
+    },
+    securityAdvice: {
+      verdict: 'AUTHENTIC & VERIFIED RETAIL PLATFORM',
+      actionItems: [
+        'Official Apple Inc. digital storefront verified with EV SSL certification.',
+        'Enterprise PCI-DSS tokenized checkout gateway (Apple Pay) active.',
+        'Zero deceptive typosquatting or credential intake patterns detected.',
+      ],
+    },
   },
 
   'demo-fake-store': {
@@ -163,6 +193,39 @@ export const DEMO_REPORTS: Record<string, ScanReport> = {
       browserLatencyMs: 1350,
       totalScanTimeMs: 2450,
     },
+    networkForensics: {
+      ip: '104.26.12.31',
+      server: 'cloudflare',
+      sslIssuer: 'Cloudflare Inc ECC CA-3 (DV)',
+      sslProtocol: 'TLS 1.3',
+      sslValid: true,
+      domainAge: '5 years old (2019)',
+      creationDate: '2019-04-10T12:00:00Z',
+      registrar: 'NameCheap, Inc.',
+    },
+    formForensics: {
+      totalForms: 3,
+      forms: [
+        {
+          action: 'https://ecommerce-playground.lambdatest.io/index.php?route=checkout/confirm',
+          method: 'POST',
+          inputs: [
+            { name: 'card_number', type: 'text' },
+            { name: 'cvv', type: 'password' },
+          ],
+          isCrossDomain: false,
+        },
+      ],
+      externalScriptCount: 14,
+    },
+    securityAdvice: {
+      verdict: 'EXERCISE EXTREME CAUTION - UNVERIFIED MERCHANT',
+      actionItems: [
+        'Do NOT submit real credit card, CVV, or banking credentials on this site.',
+        'Checkout forms harvest raw payment inputs without certified payment gateways (Stripe/PayPal).',
+        'Verify corporate registration and independent merchant reviews before engaging.',
+      ],
+    },
   },
 
   'demo-phishing-threat': {
@@ -211,6 +274,39 @@ export const DEMO_REPORTS: Record<string, ScanReport> = {
     metrics: {
       browserLatencyMs: 950,
       totalScanTimeMs: 2100,
+    },
+    networkForensics: {
+      ip: '142.250.190.84',
+      server: 'Google Frontend / gws',
+      sslIssuer: 'GTS CA 1C3 (Generic DV)',
+      sslProtocol: 'TLS 1.3',
+      sslValid: true,
+      domainAge: '16 years old (appspot generic platform)',
+      creationDate: '2008-04-07T00:00:00Z',
+      registrar: 'MarkMonitor Inc.',
+    },
+    formForensics: {
+      totalForms: 1,
+      forms: [
+        {
+          action: 'https://testsafebrowsing.appspot.com/s/harvest.php',
+          method: 'POST',
+          inputs: [
+            { name: 'username', type: 'text' },
+            { name: 'password', type: 'password' },
+          ],
+          isCrossDomain: true,
+        },
+      ],
+      externalScriptCount: 2,
+    },
+    securityAdvice: {
+      verdict: 'CRITICAL THREAT - DO NOT SUBMIT PASSWORDS',
+      actionItems: [
+        'Leave this page immediately without entering any passwords or PINs.',
+        'If you already entered account details, immediately change your password on the genuine provider.',
+        'Report this URL to Google Safe Browsing and your network security administrator.',
+      ],
     },
   },
 };

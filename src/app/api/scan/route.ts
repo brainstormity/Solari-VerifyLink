@@ -145,6 +145,22 @@ async function performScanPipeline(
       browserLatencyMs: browserResult.latencyMs,
       totalScanTimeMs: t1 - t0,
     },
+    networkForensics: {
+      ip: browserResult.networkDetails?.ip || sandboxResult.resolvedIp || undefined,
+      server: browserResult.networkDetails?.server || undefined,
+      sslIssuer: browserResult.networkDetails?.sslIssuer || undefined,
+      sslProtocol: browserResult.networkDetails?.sslProtocol || undefined,
+      sslValid: browserResult.networkDetails?.sslValid ?? undefined,
+      domainAge: sandboxResult.domainAge || undefined,
+      creationDate: sandboxResult.creationDate || undefined,
+      registrar: sandboxResult.registrar || undefined,
+    },
+    formForensics: {
+      totalForms: browserResult.domExcerpt?.forms?.length || 0,
+      forms: browserResult.domExcerpt?.forms || [],
+      externalScriptCount: browserResult.domExcerpt?.externalScriptCount || 0,
+    },
+    securityAdvice: analysis.securityAdvice,
     analyzedBy: analysis.analyzedBy,
     cascadeNotes: analysis.cascadeNotes,
   };

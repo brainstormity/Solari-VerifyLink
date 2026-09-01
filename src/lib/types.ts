@@ -7,6 +7,33 @@ export interface SecurityPillarResult {
   details: string;
 }
 
+export interface NetworkForensics {
+  ip?: string;
+  server?: string;
+  sslIssuer?: string;
+  sslProtocol?: string;
+  sslValid?: boolean;
+  domainAge?: string;
+  creationDate?: string;
+  registrar?: string;
+}
+
+export interface FormForensics {
+  totalForms: number;
+  forms: Array<{
+    action: string;
+    method: string;
+    inputs: Array<{ name: string; type: string }>;
+    isCrossDomain?: boolean;
+  }>;
+  externalScriptCount?: number;
+}
+
+export interface SecurityAdvice {
+  verdict: string;
+  actionItems: string[];
+}
+
 export interface ScanReport {
   id: string;
   targetUrl: string;
@@ -29,6 +56,9 @@ export interface ScanReport {
     browserLatencyMs: number;
     totalScanTimeMs: number;
   };
+  networkForensics?: NetworkForensics;
+  formForensics?: FormForensics;
+  securityAdvice?: SecurityAdvice;
   analyzedBy?: string;
   cascadeNotes?: string[];
 }

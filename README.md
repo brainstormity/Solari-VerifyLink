@@ -6,11 +6,11 @@ VerifyLink is an open-source web application that allows users to submit suspici
 
 ![VerifyLink Architecture](./public/verifylink-architecture.png)
 
-1. **User Input:** User pastes a link on the Next.js UI.
-2. **Solari Cloud Browser (< 3s):** Connects via Playwright to an isolated cloud browser in stealth mode. Tracks redirects, captures screenshots, and extracts the DOM.
-3. **Solari Sandbox (< 1.5s):** Provisions a microVM to run fast network forensics (DNS, WHOIS) in complete isolation.
-4. **AI Threat Reasoning:** Feeds the collected DOM and network payload into LLM threat analysis for strict structured JSON threat assessment across 4 security pillars.
-5. **Report Generation:** Generates a cryptographic Trust Score and interactive visual audit card.
+1. **User Input:** User pastes a link on the Next.js UI or chooses demo scenarios.
+2. **Solari Cloud Browser (< 3s):** Connects via Playwright to an isolated cloud browser in stealth mode. Extracts SSL/TLS certificates, server response headers, cross-domain form actions, screenshots, and DOM scripts.
+3. **Solari Sandbox (< 1.5s):** Provisions an isolated microVM to run DNS resolution and WHOIS domain age / registrar extraction.
+4. **AI Threat Reasoning:** Feeds DOM, exfiltration targets, and network telemetry into LLM threat analysis (DeepSeek / Gemini) across 4 zero-trust security pillars.
+5. **Report Generation & Action Plan:** Produces an interactive Trust Score, actionable consumer defense checklist, infrastructure forensics, and 1-click PDF / JSON export tools.
 
 ## Performance Benchmark
 

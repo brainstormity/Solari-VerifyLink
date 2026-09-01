@@ -14,8 +14,16 @@ export async function inspectUrlWithSolari(targetUrl: string) {
       domExcerpt: {
         forms: [],
         bodyText: "Welcome to the secure store.",
+        externalScriptCount: 0,
       },
       latencyMs: 1500,
+      networkDetails: {
+        server: "mock-server",
+        ip: "104.26.12.31",
+        sslIssuer: "Mock Security Authority",
+        sslProtocol: "TLS 1.3",
+        sslValid: true,
+      },
     };
   }
 
@@ -69,8 +77,9 @@ export async function inspectUrlWithSolari(targetUrl: string) {
       } catch (e) {}
     });
 
+    let response: any = null;
     try {
-      await page.goto(normalizedUrl, { waitUntil: "domcontentloaded", timeout: 8000 });
+      response = await page.goto(normalizedUrl, { waitUntil: "domcontentloaded", timeout: 8000 });
     } catch (navErr: any) {
       console.warn(`Navigation to ${normalizedUrl} ended early (${navErr?.name || "Timeout"}): Target server unresponsive or hanging.`);
       try {
@@ -91,6 +100,37 @@ export async function inspectUrlWithSolari(targetUrl: string) {
         title = await page.title().catch(() => "");
       }
     } catch (e) {}
+
+    // Extract network & SSL telemetry from Chromium
+    let serverHeader = "";
+    let serverIp = "";
+    let sslIssuer = "";
+    let sslProtocol = "";
+    let sslValid = false;
+
+    if (response) {
+      try {
+        const headers = response.headers();
+        serverHeader = headers["server"] || "";
+      } catch (e) {}
+
+      try {
+        const sAddr = await response.serverAddr();
+        if (sAddr?.ipAddress) {
+          serverIp = sAddr.ipAddress;
+        }
+      } catch (e) {}
+
+      try {
+        const sec = await response.securityDetails();
+        if (sec) {
+          sslIssuer = sec.issuer() || "";
+          sslProtocol = sec.protocol() || "";
+          const validTo = sec.validTo();
+          sslValid = validTo ? validTo * 1000 > Date.now() : true;
+        }
+      } catch (e) {}
+    }
     
     // Screenshot with tight 3s timeout
     let screenshotBase64 = "";
@@ -103,25 +143,38 @@ export async function inspectUrlWithSolari(targetUrl: string) {
       console.warn("Screenshot capture skipped:", e?.message || e);
     }
     
-    // Extract DOM with tight timeout
+    // Extract DOM with cross-domain form analysis and script inspection
     let domExcerpt: {
-      forms: Array<{ action: string; method: string; inputs: Array<{ name: string; type: string }> }>;
+      forms: Array<{ action: string; method: string; inputs: Array<{ name: string; type: string }>; isCrossDomain?: boolean }>;
       bodyText: string;
-    } = { forms: [], bodyText: "" };
+      externalScriptCount: number;
+    } = { forms: [], bodyText: "", externalScriptCount: 0 };
 
     try {
       if (!page.isClosed()) {
         domExcerpt = await Promise.race([
           page.evaluate(() => {
-            const forms = Array.from(document.querySelectorAll("form")).map(f => ({
-              action: f.action,
-              method: f.method,
-              inputs: Array.from(f.querySelectorAll("input")).map(i => ({ name: i.name, type: i.type }))
-            }));
+            const currentHost = window.location.hostname;
+            const forms = Array.from(document.querySelectorAll("form")).map(f => {
+              let isCross = false;
+              try {
+                if (f.action) {
+                  const actUrl = new URL(f.action, window.location.href);
+                  isCross = actUrl.hostname !== currentHost;
+                }
+              } catch (e) {}
+              return {
+                action: f.action || "",
+                method: (f.method || "GET").toUpperCase(),
+                inputs: Array.from(f.querySelectorAll("input")).map(i => ({ name: i.name || i.id || "", type: i.type || "text" })),
+                isCrossDomain: isCross,
+              };
+            });
             const bodyText = document.body ? document.body.innerText.slice(0, 3000) : "";
-            return { forms, bodyText };
+            const externalScriptCount = document.querySelectorAll("script[src]").length;
+            return { forms, bodyText, externalScriptCount };
           }),
-          new Promise<{ forms: any[]; bodyText: string }>((_, reject) =>
+          new Promise<{ forms: any[]; bodyText: string; externalScriptCount: number }>((_, reject) =>
             setTimeout(() => reject(new Error("DOM eval timeout")), 2500)
           )
         ]);
@@ -138,7 +191,14 @@ export async function inspectUrlWithSolari(targetUrl: string) {
       redirects,
       screenshotBase64,
       domExcerpt,
-      latencyMs
+      latencyMs,
+      networkDetails: {
+        server: serverHeader,
+        ip: serverIp,
+        sslIssuer,
+        sslProtocol,
+        sslValid,
+      },
     };
   } catch (error: any) {
     if (error instanceof SolariApiError || error?.name === "SolariApiError") {
@@ -153,8 +213,16 @@ export async function inspectUrlWithSolari(targetUrl: string) {
       domExcerpt: {
         forms: [],
         bodyText: `Target host connection failed or dropped during zero-trust inspection: ${error?.message || "Timeout"}`,
+        externalScriptCount: 0,
       },
       latencyMs: Date.now() - startTime,
+      networkDetails: {
+        server: "",
+        ip: "",
+        sslIssuer: "",
+        sslProtocol: "",
+        sslValid: false,
+      },
     };
   } finally {
     // ----------------------------------------------------

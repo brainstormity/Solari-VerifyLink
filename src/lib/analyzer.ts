@@ -21,12 +21,16 @@ export interface StatusCallbackEvent {
 }
 
 
-// Zod Schema for the expected output
 const PillarSchema = z.object({
   name: z.string(),
   status: z.enum(["pass", "warning", "fail"]),
   score: z.number().min(0).max(25),
   details: z.string(),
+});
+
+const SecurityAdviceSchema = z.object({
+  verdict: z.string(),
+  actionItems: z.array(z.string()),
 });
 
 const AnalysisResultSchema = z.object({
@@ -40,6 +44,7 @@ const AnalysisResultSchema = z.object({
     paymentSecurity: PillarSchema,
     uxPatterns: PillarSchema,
   }),
+  securityAdvice: SecurityAdviceSchema.optional(),
 });
 
 export type AnalysisResult = z.infer<typeof AnalysisResultSchema>;
@@ -212,6 +217,14 @@ export async function analyzeThreat(
         paymentSecurity: { name: "Payment Security", status: "fail", score: 1, details: "Payment form is not using secure iframes from known providers." },
         uxPatterns: { name: "UX Patterns", status: "warning", score: 10, details: "Uses aggressive popups and fake urgency timers." },
       },
+      securityAdvice: {
+        verdict: "DO NOT ENTER PASSWORDS OR PAYMENT DETAILS",
+        actionItems: [
+          "Do not submit any login credentials or credit card numbers on this site.",
+          "If you entered any account information, immediately change your password on the genuine platform.",
+          "If you submitted payment details, contact your bank or credit card issuer immediately to block unauthorized charges.",
+        ],
+      },
       analyzedBy: "Mock Simulation Engine",
       cascadeNotes: ["Mock mode active (simulation)"],
     };
@@ -250,6 +263,14 @@ export async function analyzeThreat(
         "brandSafety": { "name": "Brand Safety", "status": "pass" | "warning" | "fail", "score": number, "details": "String" },
         "paymentSecurity": { "name": "Payment Security", "status": "pass" | "warning" | "fail", "score": number, "details": "String" },
         "uxPatterns": { "name": "UX Patterns", "status": "pass" | "warning" | "fail", "score": number, "details": "String" }
+      },
+      "securityAdvice": {
+        "verdict": "Clear direct verdict (e.g. SAFE TO PROCEED, EXERCISE EXTREME CAUTION, DO NOT SUBMIT PASSWORDS OR PAYMENT DETAILS)",
+        "actionItems": [
+          "Actionable recommendation 1",
+          "Actionable recommendation 2",
+          "Actionable recommendation 3"
+        ]
       }
     }
   `;

@@ -2,12 +2,52 @@ import { SandboxClient } from "@solarisdk/sandbox";
 import { config } from "./config";
 import { SolariApiError } from "./types";
 
+function calculateDomainAge(dateStr: string): string {
+  try {
+    const created = new Date(dateStr);
+    if (isNaN(created.getTime())) return "";
+    const diffMs = Date.now() - created.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays < 0) return "";
+    if (diffDays < 30) return `Created ${diffDays} day${diffDays === 1 ? '' : 's'} ago (Very New)`;
+    const diffMonths = Math.floor(diffDays / 30);
+    if (diffMonths < 12) return `Created ${diffMonths} month${diffMonths === 1 ? '' : 's'} ago`;
+    const diffYears = Math.floor(diffDays / 365);
+    return `${diffYears} year${diffYears === 1 ? '' : 's'} old (${created.getFullYear()})`;
+  } catch (e) {
+    return "";
+  }
+}
+
+function parseWhoisMetadata(whoisText: string) {
+  let registrar = "";
+  let creationDate = "";
+
+  const regMatch = whoisText.match(/Registrar:\s*([^\r\n]+)/i) || whoisText.match(/registrar name:\s*([^\r\n]+)/i);
+  if (regMatch) registrar = regMatch[1].trim();
+
+  const dateMatch = whoisText.match(/Creation Date:\s*([^\r\n]+)/i) || whoisText.match(/created:\s*([^\r\n]+)/i) || whoisText.match(/registered on:\s*([^\r\n]+)/i);
+  if (dateMatch) {
+    creationDate = dateMatch[1].trim();
+  }
+
+  return {
+    registrar,
+    creationDate,
+    domainAge: creationDate ? calculateDomainAge(creationDate) : "",
+  };
+}
+
 export async function runSandboxForensics(domain: string) {
   if (config.isMockMode) {
     await new Promise((resolve) => setTimeout(resolve, 800));
     return {
-      dns: JSON.stringify({ address: "192.168.1.1", err: null }),
+      dns: JSON.stringify({ address: "104.26.12.31", err: null }),
       whois: "Creation Date: 2024-01-01T00:00:00Z\nRegistrar: NAMECHEAP INC\nExpiry: 2025-01-01T00:00:00Z",
+      resolvedIp: "104.26.12.31",
+      registrar: "NAMECHEAP INC",
+      creationDate: "2024-01-01T00:00:00Z",
+      domainAge: "1 year old (2024)",
     };
   }
 
@@ -64,9 +104,23 @@ export async function runSandboxForensics(domain: string) {
       whoisOutput = `WHOIS check error: ${e?.message || e}`;
     }
 
+    const whoisMeta = parseWhoisMetadata(whoisOutput);
+    let resolvedIp = "";
+    try {
+      const parsedDns = JSON.parse(dnsOutput);
+      if (parsedDns && parsedDns.address) resolvedIp = parsedDns.address;
+    } catch (e) {
+      const match = dnsOutput.match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/);
+      if (match) resolvedIp = match[0];
+    }
+
     return {
       dns: dnsOutput,
-      whois: whoisOutput
+      whois: whoisOutput,
+      resolvedIp,
+      registrar: whoisMeta.registrar,
+      creationDate: whoisMeta.creationDate,
+      domainAge: whoisMeta.domainAge,
     };
   })();
 
