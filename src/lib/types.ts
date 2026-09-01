@@ -29,6 +29,8 @@ export interface ScanReport {
     browserLatencyMs: number;
     totalScanTimeMs: number;
   };
+  analyzedBy?: string;
+  cascadeNotes?: string[];
 }
 
 export class SolariApiError extends Error {

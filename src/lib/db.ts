@@ -120,3 +120,143 @@ export async function getAllReports(): Promise<ScanReport[]> {
     return memoryReports.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }
 }
+
+// -------------------------------------------------------------
+// MODEL QUOTA TRACKER (24H COOLDOWN RESETS)
+// -------------------------------------------------------------
+const memoryQuotaCooldowns = new Map<string, Date>();
+let quotaTableInitialized = false;
+
+async function ensureQuotaTable(client: any) {
+  if (quotaTableInitialized) return;
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS model_quotas (
+      model_name VARCHAR(100) PRIMARY KEY,
+      exhausted_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      cooldown_until TIMESTAMP WITH TIME ZONE NOT NULL,
+      reason TEXT
+    );
+  `);
+  quotaTableInitialized = true;
+}
+
+export async function recordModelQuotaExhausted(
+  modelName: string,
+  cooldownHours: number = 24,
+  reason: string = "QUOTA_EXCEEDED"
+) {
+  const cooldownUntil = new Date(Date.now() + cooldownHours * 60 * 60 * 1000);
+  memoryQuotaCooldowns.set(modelName, cooldownUntil);
+
+  if (!pool) return;
+  try {
+    const client = await pool.connect();
+    try {
+      await ensureQuotaTable(client);
+      await client.query(
+        `INSERT INTO model_quotas (model_name, exhausted_at, cooldown_until, reason)
+         VALUES ($1, CURRENT_TIMESTAMP, $2, $3)
+         ON CONFLICT (model_name)
+         DO UPDATE SET exhausted_at = CURRENT_TIMESTAMP, cooldown_until = $2, reason = $3`,
+        [modelName, cooldownUntil.toISOString(), reason]
+      );
+      console.log(`[Quota Tracker] Stored ${cooldownHours}h cooldown for ${modelName} until ${cooldownUntil.toISOString()}`);
+    } finally {
+      client.release();
+    }
+  } catch (e) {
+    console.warn("[Quota Tracker] Failed to save cooldown to DB, cached in memory:", e);
+  }
+}
+
+export async function getModelCooldowns(): Promise<Map<string, Date>> {
+  const activeCooldowns = new Map<string, Date>();
+  const now = new Date();
+
+  // 1. Sync from memory cache
+  for (const [model, until] of memoryQuotaCooldowns.entries()) {
+    if (until > now) {
+      activeCooldowns.set(model, until);
+    } else {
+      memoryQuotaCooldowns.delete(model);
+    }
+  }
+
+  if (!pool) return activeCooldowns;
+
+  try {
+    const client = await pool.connect();
+    try {
+      await ensureQuotaTable(client);
+      const res = await client.query(
+        `SELECT model_name, cooldown_until FROM model_quotas WHERE cooldown_until > CURRENT_TIMESTAMP`
+      );
+      for (const row of res.rows) {
+        const until = new Date(row.cooldown_until);
+        activeCooldowns.set(row.model_name, until);
+        memoryQuotaCooldowns.set(row.model_name, until);
+      }
+    } finally {
+      client.release();
+    }
+  } catch (e) {
+    console.warn("[Quota Tracker] Failed to fetch active cooldowns from DB, using memory store:", e);
+  }
+
+  return activeCooldowns;
+}
+
+export interface ModelAvailabilityInfo {
+  available: string[];
+  inCooldown: Array<{
+    model: string;
+    cooldownUntil: Date;
+    remainingHours: number;
+  }>;
+}
+
+export async function getAvailableGeminiModels(): Promise<ModelAvailabilityInfo> {
+  const activeCooldowns = await getModelCooldowns();
+  const now = Date.now();
+  const available: string[] = [];
+  const inCooldown: Array<{ model: string; cooldownUntil: Date; remainingHours: number }> = [];
+
+  for (const model of config.geminiModelsCascade) {
+    const cooldownUntil = activeCooldowns.get(model);
+    if (cooldownUntil && cooldownUntil.getTime() > now) {
+      const remainingHours = Math.max(1, Math.ceil((cooldownUntil.getTime() - now) / (1000 * 60 * 60)));
+      inCooldown.push({ model, cooldownUntil, remainingHours });
+    } else {
+      available.push(model);
+    }
+  }
+
+  return { available, inCooldown };
+}
+
+export async function getEngineStatus() {
+  const { available, inCooldown } = await getAvailableGeminiModels();
+  const activeCooldownMap = new Map(inCooldown.map((c) => [c.model, c]));
+
+  const cascadeStatus = config.geminiModelsCascade.map((m) => {
+    const cooldown = activeCooldownMap.get(m);
+    return {
+      model: m,
+      isReady: !cooldown,
+      remainingHours: cooldown ? cooldown.remainingHours : 0,
+      cooldownUntil: cooldown ? cooldown.cooldownUntil.toISOString() : null,
+    };
+  });
+
+  const targetModel = available.length > 0
+    ? available[0]
+    : (config.DEEPSEEK_API_KEY ? "deepseek-chat" : "none");
+
+  return {
+    activeProvider: config.aiProvider,
+    targetModel,
+    cascadeStatus,
+    deepseekAvailable: Boolean(config.DEEPSEEK_API_KEY),
+  };
+}
+

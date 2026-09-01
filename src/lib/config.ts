@@ -25,7 +25,6 @@ export const config = {
     "gemini-3.7-flash",
     "gemini-3.6-flash",
     "gemini-3.5-flash",
-    "gemini-3.1-flash-lite",
   ],
   deepseekModel: "deepseek-chat",
   POSTGRES_URL: (process.env.POSTGRES_URL || "").trim(),

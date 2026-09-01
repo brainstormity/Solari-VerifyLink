@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, ArrowRight, ShieldAlert, ShoppingBag, ShieldCheck, Sparkles, Loader2, X, Zap, AlertCircle } from 'lucide-react';
-import LiveProgressModal from './LiveProgressModal';
+import { Search, ArrowRight, ShieldAlert, ShoppingBag, ShieldCheck, Sparkles, Loader2, X, AlertCircle, Cpu } from 'lucide-react';
+import LiveProgressModal, { AiSwitchNotification } from './LiveProgressModal';
 
 const SAMPLES = [
   {
@@ -35,12 +35,38 @@ const SAMPLES = [
   },
 ];
 
+interface EngineStatus {
+  activeProvider: string;
+  targetModel: string;
+  cascadeStatus: Array<{
+    model: string;
+    isReady: boolean;
+    remainingHours: number;
+  }>;
+}
+
 export default function ScanForm() {
   const router = useRouter();
   const [url, setUrl] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [step, setStep] = useState(0);
+  const [activeAiModel, setActiveAiModel] = useState<string | undefined>();
+  const [aiSwitchNotification, setAiSwitchNotification] = useState<AiSwitchNotification | null>(null);
+  const [stepStatusDetail, setStepStatusDetail] = useState<string | undefined>();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [engineStatus, setEngineStatus] = useState<EngineStatus | null>(null);
+
+  // Fetch real-time active model & 24h quota cooldowns on mount
+  useEffect(() => {
+    fetch('/api/model-status')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && data.targetModel) {
+          setEngineStatus(data);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleScan = async (targetUrl: string, demoId?: string) => {
     const trimmed = targetUrl.trim();
@@ -48,43 +74,126 @@ export default function ScanForm() {
     setErrorMessage(null);
     setIsScanning(true);
     setStep(0);
-
-    // Dynamic progress ticker
-    const progressInterval = setInterval(() => {
-      setStep((prev) => (prev < 4 ? prev + 1 : prev));
-    }, 750);
+    setActiveAiModel(undefined);
+    setAiSwitchNotification(null);
+    setStepStatusDetail(undefined);
 
     try {
-      const res = await fetch('/api/scan', {
+      const res = await fetch('/api/scan?stream=true', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: trimmed, demoId }),
       });
 
-      const data = await res.json();
-      
-      clearInterval(progressInterval);
-      setStep(5); // Complete all 5 steps
-
-      if (res.ok && data.id) {
-        setTimeout(() => {
-          router.push(`/report/${data.id}`);
-        }, 600);
-      } else {
-        setErrorMessage(data.error || "Scan failed due to an API error. Please check your configuration.");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setErrorMessage(data.error || 'Scan failed due to an API error. Please check your configuration.');
         setIsScanning(false);
+        return;
+      }
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      if (!reader) {
+        throw new Error('Streaming response reader unavailable');
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const event = JSON.parse(line.slice(6));
+
+              if (event.type === 'step') {
+                setStep(event.step);
+                if (event.label) setStepStatusDetail(event.label);
+              } else if (event.type === 'ai_evaluating') {
+                setStep(3);
+                if (event.model) setActiveAiModel(event.model);
+                if (event.label) setStepStatusDetail(event.label);
+              } else if (event.type === 'ai_switch') {
+                setStep(3);
+                if (event.model) setActiveAiModel(event.model);
+                setAiSwitchNotification({
+                  from: event.previousModel,
+                  to: event.model,
+                  reason: event.reason || event.label,
+                });
+                if (event.label) setStepStatusDetail(event.label);
+              } else if (event.type === 'ai_skip') {
+                setStepStatusDetail(event.label);
+              } else if (event.type === 'done') {
+                setStep(5);
+                setTimeout(() => {
+                  router.push(`/report/${event.id}`);
+                }, 600);
+                return;
+              } else if (event.type === 'error') {
+                setErrorMessage(event.error || 'Scan failed unexpectedly.');
+                setIsScanning(false);
+                return;
+              }
+            } catch (err) {
+              console.warn('Failed to parse SSE line:', err);
+            }
+          }
+        }
       }
     } catch (error: any) {
-      clearInterval(progressInterval);
-      setErrorMessage(error?.message || "An unexpected network error occurred during scan.");
+      setErrorMessage(error?.message || 'An unexpected network error occurred during scan.');
       setIsScanning(false);
     }
   };
 
+  // Helper label for target model
+  const getTargetModelBadge = () => {
+    if (!engineStatus) return null;
+    const { targetModel, cascadeStatus } = engineStatus;
+
+    const cooldownModels = cascadeStatus.filter((s) => !s.isReady);
+    const hasCooldown = cooldownModels.length > 0;
+
+    let displayModel = targetModel;
+    if (targetModel.includes('3.7')) displayModel = 'Gemini 3.7 Flash';
+    else if (targetModel.includes('3.6')) displayModel = 'Gemini 3.6 Flash';
+    else if (targetModel.includes('3.5')) displayModel = 'Gemini 3.5 Flash';
+    else if (targetModel.includes('deepseek')) displayModel = 'DeepSeek V4';
+
+    return (
+      <div className="flex items-center justify-center gap-2 text-xs font-mono text-zinc-400">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-900/80 border border-white/[0.08] backdrop-blur-md">
+          <Cpu className="w-3.5 h-3.5 text-cyan-400" />
+          <span>Target AI:</span>
+          <span className="text-cyan-300 font-bold">{displayModel}</span>
+          {hasCooldown && (
+            <span className="ml-1 text-[10px] text-amber-400/90 font-medium">
+              ({cooldownModels[0].model.replace('gemini-', 'G')} in 24h cooldown)
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6 relative z-10">
-      <LiveProgressModal isOpen={isScanning} currentStep={step} />
-      
+      <LiveProgressModal
+        isOpen={isScanning}
+        currentStep={step}
+        activeAiModel={activeAiModel}
+        aiSwitchNotification={aiSwitchNotification}
+        stepStatusDetail={stepStatusDetail}
+      />
+
       {/* Graceful Error Banner */}
       {errorMessage && (
         <div className="bg-rose-950/70 border border-rose-500/40 rounded-2xl p-4 sm:p-5 flex items-start justify-between gap-3 shadow-xl backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-200">
@@ -107,11 +216,13 @@ export default function ScanForm() {
         </div>
       )}
 
-      
+      {/* Target Model Status Indicator */}
+      {getTargetModelBadge()}
+
       {/* Search Input Box */}
       <div className="relative group">
         <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500/40 via-cyan-500/30 to-emerald-500/40 rounded-3xl blur-md opacity-40 group-hover:opacity-75 transition duration-500 group-focus-within:opacity-100" />
-        
+
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -122,7 +233,7 @@ export default function ScanForm() {
           <div className="pl-4 pr-3 text-zinc-400">
             <Search className="w-6 h-6 text-emerald-400" />
           </div>
-          
+
           <input
             type="text"
             required
@@ -200,7 +311,6 @@ export default function ScanForm() {
           })}
         </div>
       </div>
-
     </div>
   );
 }

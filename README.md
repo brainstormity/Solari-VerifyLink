@@ -60,7 +60,7 @@ npm run dev
 ## Tech Stack
 - **Framework:** Next.js 16 (App Router with Turbopack), TypeScript, Tailwind CSS v4, Framer Motion, Lucide Icons
 - **Isolation Engines:** `@solarisdk/browser`, `@solarisdk/sandbox`, Playwright
-- **AI Forensics:** Google Gemini (`gemini-3.7-flash`, `3.6-flash`, `3.5-flash`, `3.1-flash-lite`), DeepSeek V4 (`deepseek-chat`), Zod schema validation
+- **AI Forensics:** Google Gemini (`gemini-3.7-flash`, `3.6-flash`, `3.5-flash`), DeepSeek V4 (`deepseek-chat`), Zod schema validation
 - **Persistence:** PostgreSQL (`pg`) with automatic in-memory caching fallback
 
 ## Expanding Beyond the Base Version

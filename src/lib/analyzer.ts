@@ -2,6 +2,24 @@ import OpenAI from 'openai';
 import { z } from 'zod';
 import { config } from './config';
 import { RiskLevel, SecurityPillarResult, ThreatAnalysisApiError } from './types';
+import { getAvailableGeminiModels, recordModelQuotaExhausted } from './db';
+
+export function formatModelName(model: string): string {
+  if (model.includes("3.7")) return "Gemini 3.7 Flash";
+  if (model.includes("3.6")) return "Gemini 3.6 Flash";
+  if (model.includes("3.5")) return "Gemini 3.5 Flash";
+  if (model.includes("deepseek")) return "DeepSeek V4";
+  return model;
+}
+
+export interface StatusCallbackEvent {
+  type: "step" | "model_evaluating" | "model_switched" | "quota_cooldown_skip";
+  model?: string;
+  previousModel?: string;
+  message: string;
+  remainingHours?: number;
+}
+
 
 // Zod Schema for the expected output
 const PillarSchema = z.object({
@@ -32,8 +50,9 @@ export async function analyzeThreat(
   redirects: string[],
   domExcerpt: any,
   dnsInfo: string,
-  whoisInfo: string
-): Promise<AnalysisResult> {
+  whoisInfo: string,
+  onStatusUpdate?: (event: StatusCallbackEvent) => void
+): Promise<AnalysisResult & { analyzedBy: string; cascadeNotes: string[] }> {
   if (config.isMockMode || config.aiProvider === "none") {
     // Return mock data
     await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -52,20 +71,10 @@ export async function analyzeThreat(
         paymentSecurity: { name: "Payment Security", status: "fail", score: 1, details: "Payment form is not using secure iframes from known providers." },
         uxPatterns: { name: "UX Patterns", status: "warning", score: 10, details: "Uses aggressive popups and fake urgency timers." },
       },
+      analyzedBy: "Mock Simulation Engine",
+      cascadeNotes: ["Mock mode active (simulation)"],
     };
   }
-
-  const isGemini = config.aiProvider === "gemini";
-  const apiKey = isGemini ? config.GEMINI_API_KEY : config.DEEPSEEK_API_KEY;
-  const baseURL = isGemini
-    ? "https://generativelanguage.googleapis.com/v1beta/openai/"
-    : "https://api.deepseek.com";
-  const model = isGemini ? config.geminiModel : config.deepseekModel;
-
-  const openai = new OpenAI({
-    apiKey,
-    baseURL,
-  });
 
   const promptContext = `
     Analyze the following website for phishing, scams, and deceptive practices.
@@ -106,6 +115,7 @@ export async function analyzeThreat(
 
   let resultString: string | null = null;
   let activeModelUsed = "";
+  const cascadeNotes: string[] = [];
 
   // 1. Try Gemini Cascade if GEMINI_API_KEY is configured
   if (config.GEMINI_API_KEY) {
@@ -114,11 +124,35 @@ export async function analyzeThreat(
       baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
     });
 
+    // Check PostgreSQL quota cache to immediately bypass models currently on 24h quota cooldown
+    const { available, inCooldown } = await getAvailableGeminiModels();
+
+    for (const c of inCooldown) {
+      const skipNote = `Bypassed ${formatModelName(c.model)} (24h daily quota cooldown active, resets in ${c.remainingHours}h)`;
+      cascadeNotes.push(skipNote);
+      console.log(`[AI Engine] ${skipNote}`);
+      onStatusUpdate?.({
+        type: "quota_cooldown_skip",
+        model: c.model,
+        message: skipNote,
+        remainingHours: c.remainingHours,
+      });
+    }
+
     let lastGeminiError: any = null;
 
-    for (const model of config.geminiModelsCascade) {
+    for (let i = 0; i < available.length; i++) {
+      const model = available[i];
+      const modelLabel = formatModelName(model);
+
       try {
-        console.log(`[AI Engine] Attempting threat analysis with ${model}...`);
+        console.log(`[AI Engine] Evaluating with ${modelLabel}...`);
+        onStatusUpdate?.({
+          type: "model_evaluating",
+          model,
+          message: `Analyzing threats with ${modelLabel}...`,
+        });
+
         const response = await geminiClient.chat.completions.create({
           model,
           messages: [
@@ -131,17 +165,32 @@ export async function analyzeThreat(
         const content = response.choices?.[0]?.message?.content;
         if (content) {
           resultString = content;
-          activeModelUsed = model;
-          console.log(`[AI Engine] Successfully generated threat analysis with ${model}!`);
+          activeModelUsed = modelLabel;
+          console.log(`[AI Engine] Analysis successfully generated with ${modelLabel}!`);
           break;
         }
       } catch (err: any) {
         lastGeminiError = err;
         const status = err?.status || err?.statusCode;
         const msg = (err?.message || "").toLowerCase();
-        console.warn(`[AI Engine] ${model} failed (status: ${status || 'timeout'} - ${err?.message || ''}), evaluating next model in cascade...`);
+        console.warn(`[AI Engine] ${model} failed (status: ${status || 'timeout'} - ${err?.message || ''})`);
 
-        // If the API key is completely unauthorized, no Gemini model will succeed
+        // If rate limit (429) or quota exhausted, record 24h cooldown in DB so future calls skip it immediately
+        if (status === 429 || msg.includes("quota") || msg.includes("resource_exhausted") || msg.includes("rate limit") || err?.name === 'APIConnectionTimeoutError' || msg.includes('timeout')) {
+          await recordModelQuotaExhausted(model, 24, "Daily quota / rate limit exhausted");
+          const nextTarget = available[i + 1] ? formatModelName(available[i + 1]) : (config.DEEPSEEK_API_KEY ? "DeepSeek V4" : "None");
+          const switchMsg = `${modelLabel} quota reached (24h cooldown active). Auto-switching to ${nextTarget}...`;
+          cascadeNotes.push(switchMsg);
+
+          onStatusUpdate?.({
+            type: "model_switched",
+            previousModel: model,
+            model: available[i + 1] || "deepseek-chat",
+            message: switchMsg,
+          });
+        }
+
+        // If the API key itself is invalid (401/403), continuing Gemini models won't help
         if (status === 401 || status === 403 || msg.includes("api_key") || msg.includes("unauthorized") || msg.includes("permission_denied")) {
           console.warn("[AI Engine] Gemini API key unauthorized, terminating Gemini cascade.");
           break;
@@ -149,9 +198,19 @@ export async function analyzeThreat(
       }
     }
 
-    // 2. If Gemini cascade exhausted and DEEPSEEK_API_KEY is also present, failover to DeepSeek!
+    // 2. If all Gemini models in cascade are exhausted, failover to DeepSeek V4 if configured!
     if (!resultString && config.DEEPSEEK_API_KEY) {
-      console.log("[AI Engine] All Gemini cascade models exhausted / rate-limited. Failing over to DeepSeek API...");
+      const failoverMsg = `All Gemini models in 24h quota cooldown. Seamlessly failing over to DeepSeek V4...`;
+      console.log(`[AI Engine] ${failoverMsg}`);
+      cascadeNotes.push(failoverMsg);
+
+      onStatusUpdate?.({
+        type: "model_switched",
+        previousModel: "Gemini",
+        model: "DeepSeek V4",
+        message: failoverMsg,
+      });
+
       const deepseekClient = new OpenAI({
         apiKey: config.DEEPSEEK_API_KEY,
         baseURL: "https://api.deepseek.com",
@@ -170,8 +229,8 @@ export async function analyzeThreat(
         const content = response.choices?.[0]?.message?.content;
         if (content) {
           resultString = content;
-          activeModelUsed = `deepseek-chat (failover from Gemini)`;
-          console.log("[AI Engine] Successfully generated threat analysis with DeepSeek failover!");
+          activeModelUsed = "DeepSeek V4 (Failover)";
+          console.log("[AI Engine] Threat analysis successfully generated with DeepSeek failover!");
         }
       } catch (deepseekErr: any) {
         console.error("[AI Engine] DeepSeek failover also failed:", deepseekErr);
@@ -191,7 +250,7 @@ export async function analyzeThreat(
       }
 
       throw new ThreatAnalysisApiError(
-        "All Gemini models (3.7 Flash, 3.6 Flash, 3.5 Flash, 3.1 Flash Lite) reached daily quota or rate limits. Add DEEPSEEK_API_KEY in .env to enable automatic multi-provider failover.",
+        "All Gemini models (3.7 Flash, 3.6 Flash, 3.5 Flash) reached daily quota/rate limits (24h cooldown active). Add DEEPSEEK_API_KEY in .env to enable automatic failover.",
         "gemini",
         429
       );
@@ -199,6 +258,12 @@ export async function analyzeThreat(
   } else if (config.DEEPSEEK_API_KEY) {
     // 3. Only DeepSeek is configured
     console.log(`[AI Engine] Running threat analysis with DeepSeek (${config.deepseekModel})...`);
+    onStatusUpdate?.({
+      type: "model_evaluating",
+      model: "DeepSeek V4",
+      message: "Analyzing threats with DeepSeek V4...",
+    });
+
     const deepseekClient = new OpenAI({
       apiKey: config.DEEPSEEK_API_KEY,
       baseURL: "https://api.deepseek.com",
@@ -215,7 +280,7 @@ export async function analyzeThreat(
       }, { timeout: 15000 });
 
       resultString = response.choices?.[0]?.message?.content || null;
-      activeModelUsed = config.deepseekModel;
+      activeModelUsed = "DeepSeek V4";
     } catch (deepseekErr: any) {
       console.error("[AI Engine] DeepSeek analysis failed:", deepseekErr);
       handleDeepSeekError(deepseekErr);
@@ -255,7 +320,12 @@ export async function analyzeThreat(
 
   try {
     const parsed = JSON.parse(resultString);
-    return AnalysisResultSchema.parse(parsed);
+    const validated = AnalysisResultSchema.parse(parsed);
+    return {
+      ...validated,
+      analyzedBy: activeModelUsed || "AI Threat Engine",
+      cascadeNotes,
+    };
   } catch (err) {
     console.error("Failed to parse LLM output:", err, resultString);
     throw new ThreatAnalysisApiError(
@@ -265,5 +335,3 @@ export async function analyzeThreat(
     );
   }
 }
-
-

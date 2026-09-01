@@ -1,5 +1,5 @@
 import { Solari, BrowserSession } from "@solarisdk/browser";
-import { chromium } from "patchright-core";
+import { chromium } from "playwright";
 import { config } from "./config";
 import { SolariApiError } from "./types";
 

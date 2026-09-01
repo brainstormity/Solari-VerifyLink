@@ -5,7 +5,7 @@ import ScreenshotPreview from '@/components/ScreenshotPreview';
 import SecurityPillars from '@/components/SecurityPillars';
 import ShareButtons from '@/components/ShareButtons';
 import { getReport } from '@/lib/db';
-import { Clock, ShieldAlert, Zap, ArrowLeft, ExternalLink, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Clock, ShieldAlert, Zap, ArrowLeft, ExternalLink, ShieldCheck, AlertTriangle, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
 export default async function ReportPage(props: { params: Promise<{ id: string }> }) {
@@ -98,10 +98,32 @@ export default async function ReportPage(props: { params: Promise<{ id: string }
               </a>
             </div>
 
-            <div className="flex items-center gap-2 text-emerald-400 text-[11px] sm:text-xs font-mono font-medium pt-1 sm:pt-2">
-              <Zap className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">Detonated in {(metrics.totalScanTimeMs / 1000).toFixed(1)}s in Solari MicroVM</span>
+            <div className="flex flex-wrap items-center gap-2 pt-1 sm:pt-2">
+              <div className="flex items-center gap-2 text-emerald-400 text-[11px] sm:text-xs font-mono font-medium">
+                <Zap className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Detonated in {(metrics.totalScanTimeMs / 1000).toFixed(1)}s in Solari MicroVM</span>
+              </div>
+
+              {report.analyzedBy && (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[11px] font-mono bg-cyan-500/10 border-cyan-500/25 text-cyan-300">
+                  <Sparkles className="w-3 h-3 text-cyan-400 shrink-0" />
+                  <span>AI: {report.analyzedBy}</span>
+                </div>
+              )}
             </div>
+
+            {report.cascadeNotes && report.cascadeNotes.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {report.cascadeNotes.map((note, idx) => (
+                  <span
+                    key={idx}
+                    className="text-[10px] font-mono text-zinc-400 bg-zinc-950/80 border border-white/[0.06] px-2.5 py-0.5 rounded-full"
+                  >
+                    {note}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           
           <div className="shrink-0 self-center md:self-center bg-zinc-950/80 p-3.5 sm:p-4 rounded-3xl border border-white/[0.06] shadow-inner">
