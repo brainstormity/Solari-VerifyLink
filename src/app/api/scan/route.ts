@@ -146,11 +146,13 @@ async function performScanPipeline(
       totalScanTimeMs: t1 - t0,
     },
     networkForensics: {
-      ip: browserResult.networkDetails?.ip || sandboxResult.resolvedIp || undefined,
+      ip: (browserResult.networkDetails?.ip && !['127.0.0.1', 'localhost', '0.0.0.0', '::1'].includes(browserResult.networkDetails.ip))
+        ? browserResult.networkDetails.ip
+        : sandboxResult.resolvedIp || undefined,
       server: browserResult.networkDetails?.server || undefined,
       sslIssuer: browserResult.networkDetails?.sslIssuer || undefined,
       sslProtocol: browserResult.networkDetails?.sslProtocol || undefined,
-      sslValid: browserResult.networkDetails?.sslValid ?? undefined,
+      sslValid: browserResult.networkDetails?.sslValid ?? targetTrimmed.startsWith('https'),
       domainAge: sandboxResult.domainAge || undefined,
       creationDate: sandboxResult.creationDate || undefined,
       registrar: sandboxResult.registrar || undefined,

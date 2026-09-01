@@ -24,7 +24,6 @@ import {
 import Link from 'next/link';
 
 import DeleteReportButton from '@/components/DeleteReportButton';
-import ReportActions from '@/components/ReportActions';
 
 export default async function ReportPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
@@ -124,7 +123,6 @@ export default async function ReportPage(props: { params: Promise<{ id: string }
               <span className="w-2 h-2 rounded-full bg-emerald-400" />
               <span>Audit ID: <span className="text-zinc-300 font-bold">{id.slice(0, 8)}</span></span>
             </div>
-            <ReportActions report={report} />
             <DeleteReportButton id={id} domain={domain} />
           </div>
         </div>

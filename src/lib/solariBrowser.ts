@@ -106,7 +106,7 @@ export async function inspectUrlWithSolari(targetUrl: string) {
     let serverIp = "";
     let sslIssuer = "";
     let sslProtocol = "";
-    let sslValid = false;
+    let sslValid = normalizedUrl.startsWith("https") || finalUrl.startsWith("https");
 
     if (response) {
       try {
@@ -116,7 +116,7 @@ export async function inspectUrlWithSolari(targetUrl: string) {
 
       try {
         const sAddr = await response.serverAddr();
-        if (sAddr?.ipAddress) {
+        if (sAddr?.ipAddress && !["127.0.0.1", "localhost", "0.0.0.0", "::1"].includes(sAddr.ipAddress)) {
           serverIp = sAddr.ipAddress;
         }
       } catch (e) {}
