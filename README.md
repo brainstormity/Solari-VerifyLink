@@ -2,6 +2,8 @@
 
 VerifyLink is an open-source web application that allows users to submit suspicious URLs, payment links, or online deals. It spins up an ephemeral, isolated **Solari Cloud Browser** and **Solari Sandbox** microVM to inspect the link safely, run heuristic security checks, detect fake checkout gateways and phishing patterns, and generate a publicly shareable, visual Trust Audit Card in seconds.
 
+![VerifyLink Homepage](./public/verifylink-homepage.png)
+
 ## Architecture
 
 ![VerifyLink Architecture](./public/verifylink-architecture.png)
