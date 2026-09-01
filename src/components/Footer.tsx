@@ -11,8 +11,12 @@ export default function Footer() {
         {/* Brand & Mission */}
         <div className="flex flex-col sm:flex-row items-center gap-3 text-center sm:text-left">
           <div className="flex items-center gap-2">
-            <div className="p-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-              <ShieldCheck className="w-4 h-4" />
+            <div className="p-1 rounded-lg bg-zinc-900 border border-emerald-500/30 overflow-hidden flex items-center justify-center">
+              <img
+                src="/verifylink-logo.png"
+                alt="VerifyLink Logo"
+                className="w-4 h-4 object-contain rounded-md"
+              />
             </div>
             <span className="font-extrabold text-white text-sm">VerifyLink</span>
           </div>

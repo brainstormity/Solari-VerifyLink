@@ -18,8 +18,12 @@ export default function Navbar() {
         <Link href="/" className="flex items-center gap-2.5 sm:gap-3 group shrink-0">
           <div className="relative">
             <div className="absolute -inset-1 bg-emerald-500/30 rounded-xl blur-sm group-hover:bg-emerald-500/50 transition-all" />
-            <div className="relative bg-zinc-900 border border-emerald-500/40 p-1.5 sm:p-2 rounded-xl text-emerald-400">
-              <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
+            <div className="relative bg-zinc-900 border border-emerald-500/40 p-1 sm:p-1.5 rounded-xl overflow-hidden flex items-center justify-center">
+              <img
+                src="/verifylink-logo.png"
+                alt="VerifyLink Logo"
+                className="w-5 h-5 sm:w-6 sm:h-6 object-contain rounded-lg"
+              />
             </div>
           </div>
           <div className="flex flex-col">
