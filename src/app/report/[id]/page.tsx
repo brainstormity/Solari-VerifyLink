@@ -8,6 +8,8 @@ import { getReport } from '@/lib/db';
 import { Clock, ShieldAlert, Zap, ArrowLeft, ExternalLink, ShieldCheck, AlertTriangle, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
+import DeleteReportButton from '@/components/DeleteReportButton';
+
 export default async function ReportPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
   const report = await getReport(id);
@@ -54,9 +56,12 @@ export default async function ReportPage(props: { params: Promise<{ id: string }
             <span>Back to My Reports</span>
           </Link>
 
-          <div className="flex items-center gap-2 text-[11px] sm:text-xs font-mono text-zinc-500">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            <span>Audit ID: <span className="text-zinc-300 font-bold">{id.slice(0, 8)}</span></span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-[11px] sm:text-xs font-mono text-zinc-500">
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <span>Audit ID: <span className="text-zinc-300 font-bold">{id.slice(0, 8)}</span></span>
+            </div>
+            <DeleteReportButton id={id} domain={domain} />
           </div>
         </div>
 

@@ -37,7 +37,11 @@ const SAMPLES = [
 
 interface EngineStatus {
   activeProvider: string;
+  defaultProvider?: "deepseek" | "gemini";
   targetModel: string;
+  geminiAvailable?: boolean;
+  deepseekAvailable?: boolean;
+  bothKeysAvailable?: boolean;
   cascadeStatus: Array<{
     model: string;
     isReady: boolean;
@@ -55,14 +59,18 @@ export default function ScanForm() {
   const [stepStatusDetail, setStepStatusDetail] = useState<string | undefined>();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [engineStatus, setEngineStatus] = useState<EngineStatus | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState<"deepseek" | "gemini">("deepseek");
 
   // Fetch real-time active model & 24h quota cooldowns on mount
   useEffect(() => {
     fetch('/api/model-status')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data && data.targetModel) {
+        if (data) {
           setEngineStatus(data);
+          if (data.defaultProvider) {
+            setSelectedProvider(data.defaultProvider);
+          }
         }
       })
       .catch(() => {});
@@ -82,7 +90,11 @@ export default function ScanForm() {
       const res = await fetch('/api/scan?stream=true', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: trimmed, demoId }),
+        body: JSON.stringify({
+          url: trimmed,
+          demoId,
+          preferredProvider: selectedProvider,
+        }),
       });
 
       if (!res.ok) {
@@ -216,8 +228,47 @@ export default function ScanForm() {
         </div>
       )}
 
-      {/* Target Model Status Indicator */}
-      {getTargetModelBadge()}
+      {/* Model Selector: lets user choose DeepSeek or Gemini if both keys are added, defaulting to DeepSeek */}
+      {engineStatus?.bothKeysAvailable ? (
+        <div className="flex flex-col items-center justify-center gap-2">
+          <div className="inline-flex items-center gap-1.5 p-1.5 rounded-2xl bg-zinc-950/80 border border-white/[0.1] shadow-2xl backdrop-blur-2xl">
+            <button
+              type="button"
+              onClick={() => setSelectedProvider('deepseek')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                selectedProvider === 'deepseek'
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-indigo-500/25 scale-[1.02]'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>DeepSeek V4</span>
+              <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-black/40 text-blue-200 font-bold">
+                Default
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedProvider('gemini')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                selectedProvider === 'gemini'
+                  ? 'bg-gradient-to-r from-cyan-600 to-teal-600 text-white shadow-lg shadow-teal-500/25 scale-[1.02]'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]'
+              }`}
+            >
+              <Cpu className="w-3.5 h-3.5" />
+              <span>Gemini Cascade</span>
+              <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-black/40 text-cyan-200 font-bold">
+                3.7/3.6/3.5
+              </span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* Target Model Status Indicator */
+        getTargetModelBadge()
+      )}
 
       {/* Search Input Box */}
       <div className="relative group">

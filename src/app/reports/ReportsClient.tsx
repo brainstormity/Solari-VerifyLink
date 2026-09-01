@@ -3,18 +3,40 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { ScanReport } from '@/lib/types';
-import { Search, ShieldAlert, ShieldCheck, AlertTriangle, ArrowUpRight, Clock, Zap, Filter, ArrowRight, Globe2 } from 'lucide-react';
+import { Search, ShieldAlert, ShieldCheck, AlertTriangle, ArrowUpRight, Clock, Zap, Filter, ArrowRight, Globe2, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import DeleteConfirmationModal from '@/components/DeleteConfirmationModal';
 
 interface ReportsClientProps {
   initialReports: ScanReport[];
 }
 
 export default function ReportsClient({ initialReports }: ReportsClientProps) {
+  const [reports, setReports] = useState<ScanReport[]>(initialReports);
   const [search, setSearch] = useState('');
   const [filterRisk, setFilterRisk] = useState<string>('ALL');
+  const [reportToDelete, setReportToDelete] = useState<ScanReport | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const filteredReports = initialReports.filter((report) => {
+  const handleConfirmDelete = async () => {
+    if (!reportToDelete) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/report/${reportToDelete.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setReports((prev) => prev.filter((r) => r.id !== reportToDelete.id));
+        setReportToDelete(null);
+      } else {
+        alert('Failed to delete report.');
+      }
+    } catch (e) {
+      alert('Error deleting report.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const filteredReports = reports.filter((report) => {
     const matchesSearch =
       report.domain.toLowerCase().includes(search.toLowerCase()) ||
       report.targetUrl.toLowerCase().includes(search.toLowerCase()) ||
@@ -26,10 +48,10 @@ export default function ReportsClient({ initialReports }: ReportsClientProps) {
   });
 
   // Calculate high-level stats
-  const totalCount = initialReports.length;
-  const criticalCount = initialReports.filter(r => r.riskLevel === 'CRITICAL' || r.riskLevel === 'DANGEROUS').length;
-  const safeCount = initialReports.filter(r => r.riskLevel === 'SAFE').length;
-  const suspiciousCount = initialReports.filter(r => r.riskLevel === 'SUSPICIOUS').length;
+  const totalCount = reports.length;
+  const criticalCount = reports.filter(r => r.riskLevel === 'CRITICAL' || r.riskLevel === 'DANGEROUS').length;
+  const safeCount = reports.filter(r => r.riskLevel === 'SAFE').length;
+  const suspiciousCount = reports.filter(r => r.riskLevel === 'SUSPICIOUS').length;
 
   const getRiskTheme = (risk: string) => {
     switch (risk) {
@@ -215,13 +237,28 @@ export default function ReportsClient({ initialReports }: ReportsClientProps) {
                       <span>{new Date(report.timestamp).toLocaleDateString()}</span>
                     </div>
 
-                    <Link
-                      href={`/report/${report.id}`}
-                      className="inline-flex items-center gap-1 text-zinc-300 hover:text-emerald-400 font-bold group-hover:translate-x-1 transition-all text-xs bg-white/[0.04] hover:bg-emerald-500/10 px-2.5 sm:px-3 py-1.5 rounded-lg border border-white/[0.06] hover:border-emerald-500/30"
-                    >
-                      <span>Full Audit</span>
-                      <ArrowUpRight className="w-3.5 h-3.5" />
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setReportToDelete(report);
+                        }}
+                        className="p-1.5 sm:p-2 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all"
+                        title="Delete report"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+
+                      <Link
+                        href={`/report/${report.id}`}
+                        className="inline-flex items-center gap-1 text-zinc-300 hover:text-emerald-400 font-bold group-hover:translate-x-1 transition-all text-xs bg-white/[0.04] hover:bg-emerald-500/10 px-2.5 sm:px-3 py-1.5 rounded-lg border border-white/[0.06] hover:border-emerald-500/30"
+                      >
+                        <span>Full Audit</span>
+                        <ArrowUpRight className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
                   </div>
                 </motion.div>
               );
@@ -229,6 +266,15 @@ export default function ReportsClient({ initialReports }: ReportsClientProps) {
           </AnimatePresence>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmationModal
+        isOpen={Boolean(reportToDelete)}
+        targetDomain={reportToDelete?.domain || ''}
+        onClose={() => setReportToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }

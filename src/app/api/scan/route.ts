@@ -23,7 +23,8 @@ interface ScanProgressUpdate {
 async function performScanPipeline(
   url: string | undefined,
   demoId: string | undefined,
-  onUpdate?: (update: ScanProgressUpdate) => void
+  onUpdate?: (update: ScanProgressUpdate) => void,
+  preferredProvider?: "deepseek" | "gemini"
 ): Promise<{ id: string; analyzedBy?: string; cascadeNotes?: string[] }> {
   let targetTrimmed = (url || '').trim();
   let domain = targetTrimmed;
@@ -47,7 +48,7 @@ async function performScanPipeline(
     await new Promise((r) => setTimeout(r, 700));
     onUpdate?.({ type: 'step', step: 2, label: 'Detonating in Solari Sandbox MicroVM' });
     await new Promise((r) => setTimeout(r, 700));
-    onUpdate?.({ type: 'ai_evaluating', step: 3, model: 'Gemini 3.7 Flash', label: 'Analyzing threats with Gemini 3.7 Flash...' });
+    onUpdate?.({ type: 'ai_evaluating', step: 3, model: preferredProvider === 'gemini' ? 'Gemini 3.7 Flash' : 'DeepSeek V4', label: `Analyzing threats with ${preferredProvider === 'gemini' ? 'Gemini 3.7 Flash' : 'DeepSeek V4'}...` });
     await new Promise((r) => setTimeout(r, 800));
     onUpdate?.({ type: 'step', step: 4, label: 'Synthesizing Trust Audit Card' });
     await new Promise((r) => setTimeout(r, 500));
@@ -55,11 +56,11 @@ async function performScanPipeline(
     const report: ScanReport = {
       ...DEMO_REPORTS[matchingDemoId],
       timestamp: new Date().toISOString(),
-      analyzedBy: 'Gemini 3.7 Flash',
+      analyzedBy: preferredProvider === 'gemini' ? 'Gemini 3.7 Flash' : 'DeepSeek V4',
       cascadeNotes: ['Verified demo baseline'],
     };
     await saveReport(report);
-    return { id: matchingDemoId, analyzedBy: 'Gemini 3.7 Flash' };
+    return { id: matchingDemoId, analyzedBy: report.analyzedBy };
   }
 
   // 1. Solari Cloud Browser
@@ -110,7 +111,8 @@ async function performScanPipeline(
           label: aiEvent.message,
         });
       }
-    }
+    },
+    preferredProvider
   );
 
   const t1 = Date.now();
@@ -155,7 +157,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { url, demoId } = body;
+  const { url, demoId, preferredProvider } = body;
   if (!url && !demoId) {
     return NextResponse.json({ error: 'Missing URL or demoId' }, { status: 400 });
   }
@@ -174,7 +176,7 @@ export async function POST(req: NextRequest) {
 
     (async () => {
       try {
-        const result = await performScanPipeline(url, demoId, pushUpdate);
+        const result = await performScanPipeline(url, demoId, pushUpdate, preferredProvider);
         pushUpdate({
           type: 'done',
           id: result.id,
@@ -205,7 +207,7 @@ export async function POST(req: NextRequest) {
   // STANDARD SYNCHRONOUS REST MODE
   // -------------------------------------------------------------
   try {
-    const result = await performScanPipeline(url, demoId);
+    const result = await performScanPipeline(url, demoId, undefined, preferredProvider);
     return NextResponse.json(result);
   } catch (error: any) {
     if (error instanceof SolariApiError || error?.name === 'SolariApiError') {

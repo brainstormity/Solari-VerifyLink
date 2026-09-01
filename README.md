@@ -39,9 +39,9 @@ Create a `.env` file in the root directory:
 SOLARI_API_KEY=your_solari_api_key
 
 # AI Threat Analysis Engines (Provide either one or both)
-# If both are provided, Gemini is used by default with automatic failover to DeepSeek
+# If both are provided, DeepSeek V4 is used by default with an interactive UI toggle and automatic failover
+DEEPSEEK_API_KEY=your_deepseek_api_key # PAID (Default if both added)
 GEMINI_API_KEY=your_gemini_api_key    # FREE (20 req/day on Gemini 3.7 Flash)
-DEEPSEEK_API_KEY=your_deepseek_api_key # PAID (requires credits)
 
 # PostgreSQL connection string for saving reports (optional)
 POSTGRES_URL=your_postgres_connection_string
@@ -59,8 +59,8 @@ npm run dev
 
 ## Tech Stack
 - **Framework:** Next.js 16 (App Router with Turbopack), TypeScript, Tailwind CSS v4, Framer Motion, Lucide Icons
-- **Isolation Engines:** `@solarisdk/browser`, `@solarisdk/sandbox`, Playwright
-- **AI Forensics:** Google Gemini (`gemini-3.7-flash`, `3.6-flash`, `3.5-flash`), DeepSeek V4 (`deepseek-chat`), Zod schema validation
+- **Isolation Engines:** `@solarisdk/browser`, `@solarisdk/sandbox`, Playwright v1.62
+- **AI Forensics:** DeepSeek V4 (`deepseek-chat`), Google Gemini (`gemini-3.7-flash`, `3.6-flash`, `3.5-flash`), Zod schema validation
 - **Persistence:** PostgreSQL (`pg`) with automatic in-memory caching fallback
 
 ## Expanding Beyond the Base Version

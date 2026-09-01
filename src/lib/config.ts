@@ -8,18 +8,24 @@ const solariKey = sanitizeKey(process.env.SOLARI_API_KEY);
 const geminiKey = sanitizeKey(process.env.GEMINI_API_KEY);
 const deepseekKey = sanitizeKey(process.env.DEEPSEEK_API_KEY);
 
-// If both are put, use gemini by default; otherwise use whichever is provided
-const activeAiProvider: "gemini" | "deepseek" | "none" = geminiKey
-  ? "gemini"
-  : deepseekKey
-  ? "deepseek"
-  : "none";
+// If both are provided, default to deepseek; otherwise use whichever is provided
+const bothKeysAvailable = Boolean(geminiKey && deepseekKey);
+const activeAiProvider: "gemini" | "deepseek" | "none" =
+  deepseekKey && geminiKey
+    ? "deepseek"
+    : deepseekKey
+    ? "deepseek"
+    : geminiKey
+    ? "gemini"
+    : "none";
 
 export const config = {
   SOLARI_API_KEY: solariKey,
   GEMINI_API_KEY: geminiKey,
   DEEPSEEK_API_KEY: deepseekKey,
+  bothKeysAvailable,
   aiProvider: activeAiProvider,
+  defaultAiProvider: activeAiProvider,
   geminiModel: "gemini-3.7-flash",
   geminiModelsCascade: [
     "gemini-3.7-flash",

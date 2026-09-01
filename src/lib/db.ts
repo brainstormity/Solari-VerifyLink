@@ -56,6 +56,29 @@ export async function saveReport(report: ScanReport) {
   }
 }
 
+export async function deleteReport(id: string): Promise<boolean> {
+  // 1. Remove from in-memory cache
+  mockStore.delete(id);
+
+  if (config.isMockMode || !pool) {
+    return true;
+  }
+
+  try {
+    const client = await pool.connect();
+    try {
+      await ensureTable(client);
+      await client.query('DELETE FROM reports WHERE id = $1', [id]);
+      return true;
+    } finally {
+      client.release();
+    }
+  } catch (e) {
+    console.warn("PostgreSQL deleteReport error:", e);
+    return true;
+  }
+}
+
 export async function getReport(id: string): Promise<ScanReport | null> {
   // 1. Check memory store
   const memoryCached = mockStore.get(id);
@@ -248,15 +271,23 @@ export async function getEngineStatus() {
     };
   });
 
-  const targetModel = available.length > 0
-    ? available[0]
-    : (config.DEEPSEEK_API_KEY ? "deepseek-chat" : "none");
+  const targetModel =
+    config.aiProvider === "deepseek"
+      ? "deepseek-chat"
+      : available.length > 0
+      ? available[0]
+      : config.DEEPSEEK_API_KEY
+      ? "deepseek-chat"
+      : "none";
 
   return {
     activeProvider: config.aiProvider,
+    defaultProvider: config.defaultAiProvider,
     targetModel,
     cascadeStatus,
+    geminiAvailable: Boolean(config.GEMINI_API_KEY),
     deepseekAvailable: Boolean(config.DEEPSEEK_API_KEY),
+    bothKeysAvailable: config.bothKeysAvailable,
   };
 }
 
