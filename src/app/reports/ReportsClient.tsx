@@ -254,10 +254,10 @@ export default function ReportsClient({ initialReports }: ReportsClientProps) {
 
                       <Link
                         href={`/report/${report.id}`}
-                        className="inline-flex items-center gap-1 text-zinc-300 hover:text-emerald-400 font-bold group-hover:translate-x-1 transition-all text-xs bg-white/[0.04] hover:bg-emerald-500/10 px-2.5 sm:px-3 py-1.5 rounded-lg border border-white/[0.06] hover:border-emerald-500/30"
+                        className="inline-flex items-center gap-1.5 text-blue-200 hover:text-white font-bold transition-all text-xs bg-blue-950/60 hover:bg-blue-900/80 px-3 py-1.5 rounded-xl border border-blue-500/30 hover:border-blue-400/60 shadow-sm shadow-blue-950/40 hover:shadow-blue-600/20 group/view"
                       >
-                        <span>Full Audit</span>
-                        <ArrowUpRight className="w-3.5 h-3.5" />
+                        <span>View Report</span>
+                        <ArrowUpRight className="w-3.5 h-3.5 text-blue-400 group-hover/view:text-blue-100 group-hover/view:translate-x-0.5 group-hover/view:-translate-y-0.5 transition-all" />
                       </Link>
                     </div>
                   </div>
