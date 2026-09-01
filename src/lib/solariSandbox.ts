@@ -16,9 +16,13 @@ export async function runSandboxForensics(domain: string) {
   let sandbox: any = null;
 
   const sandboxPromise = (async () => {
-    // 1. Create sandbox with short server-side TTL timeout
+    // 1. Create sandbox with short server-side TTL timeout and explicit kill lifecycle
     try {
-      sandbox = await sandboxClient.create({ template: "base", timeoutMs: 30000 } as any);
+      sandbox = await sandboxClient.create({
+        template: "base",
+        timeoutMs: 15000,
+        lifecycle: { onTimeout: "kill", autoResume: false },
+      } as any);
       sandboxId = sandbox.sandboxId || sandbox.id || sandbox.session?.id || null;
     } catch (sandboxErr: any) {
       console.error("Solari Sandbox VM creation failed:", sandboxErr);

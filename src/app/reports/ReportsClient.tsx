@@ -208,7 +208,7 @@ export default function ReportsClient({ initialReports }: ReportsClientProps) {
                       <div className="flex items-center gap-1.5 sm:gap-2">
                         <Globe2 className="w-4 h-4 text-zinc-500 shrink-0" />
                         <h3 className="font-extrabold text-base sm:text-lg text-white group-hover:text-emerald-400 transition-colors truncate">
-                          {report.domain}
+                          {report.domain || report.targetUrl.replace(/^https?:\/\//i, '').split('/')[0] || 'Target Domain'}
                         </h3>
                       </div>
                       <p className="text-zinc-500 text-[11px] sm:text-xs truncate font-mono pl-5 sm:pl-6" title={report.targetUrl}>
@@ -245,10 +245,11 @@ export default function ReportsClient({ initialReports }: ReportsClientProps) {
                           e.stopPropagation();
                           setReportToDelete(report);
                         }}
-                        className="p-1.5 sm:p-2 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all"
+                        className="inline-flex items-center gap-1.5 text-zinc-400 hover:text-rose-300 hover:bg-rose-500/10 px-2.5 sm:px-3 py-1.5 rounded-lg border border-white/[0.06] hover:border-rose-500/25 transition-all text-xs font-semibold group/btn"
                         title="Delete report"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-3.5 h-3.5 text-rose-400 group-hover/btn:scale-110 transition-transform" />
+                        <span>Delete</span>
                       </button>
 
                       <Link

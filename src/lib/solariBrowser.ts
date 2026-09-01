@@ -72,14 +72,22 @@ export async function inspectUrlWithSolari(targetUrl: string) {
     try {
       await page.goto(normalizedUrl, { waitUntil: "domcontentloaded", timeout: 8000 });
     } catch (navErr: any) {
-      console.warn(`Navigation to ${normalizedUrl} ended early:`, navErr?.message || navErr);
+      console.warn(`Navigation to ${normalizedUrl} ended early (${navErr?.name || "Timeout"}): Target server unresponsive or hanging.`);
+      try {
+        if (!page.isClosed()) {
+          await page.evaluate(() => window.stop()).catch(() => {});
+        }
+      } catch (e) {}
     }
     
     let finalUrl = normalizedUrl;
     let title = "";
     try {
       if (!page.isClosed()) {
-        finalUrl = page.url() || normalizedUrl;
+        const pageUrl = page.url();
+        if (pageUrl && pageUrl !== "about:blank" && !pageUrl.startsWith("data:")) {
+          finalUrl = pageUrl;
+        }
         title = await page.title().catch(() => "");
       }
     } catch (e) {}

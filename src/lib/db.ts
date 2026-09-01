@@ -79,16 +79,28 @@ export async function deleteReport(id: string): Promise<boolean> {
   }
 }
 
+function ensureValidReport(report: ScanReport): ScanReport {
+  if (!report.domain || report.domain === 'about:blank') {
+    let cleanDomain = (report.targetUrl || '').replace(/^https?:\/\//i, '').split('/')[0].split('?')[0];
+    try {
+      const parsed = new URL(report.targetUrl.startsWith('http') ? report.targetUrl : `https://${report.targetUrl}`).hostname;
+      if (parsed) cleanDomain = parsed;
+    } catch (e) {}
+    report.domain = cleanDomain || 'Target Host';
+  }
+  return report;
+}
+
 export async function getReport(id: string): Promise<ScanReport | null> {
   // 1. Check memory store
   const memoryCached = mockStore.get(id);
   if (memoryCached) {
-    return memoryCached;
+    return ensureValidReport(memoryCached);
   }
 
   // 2. Check predefined demo reports fallback
   if (DEMO_REPORTS[id]) {
-    return DEMO_REPORTS[id];
+    return ensureValidReport(DEMO_REPORTS[id]);
   }
 
   if (config.isMockMode || !pool) {
@@ -101,7 +113,7 @@ export async function getReport(id: string): Promise<ScanReport | null> {
       await ensureTable(client);
       const res = await client.query('SELECT data FROM reports WHERE id = $1', [id]);
       if (res.rows.length > 0) {
-        const report = res.rows[0].data as ScanReport;
+        const report = ensureValidReport(res.rows[0].data as ScanReport);
         mockStore.set(id, report); // Cache for subsequent reads
         return report;
       }
@@ -111,12 +123,13 @@ export async function getReport(id: string): Promise<ScanReport | null> {
     }
   } catch (e) {
     console.warn("PostgreSQL getReport error, falling back to memory store:", e);
-    return mockStore.get(id) || null;
+    const fallback = mockStore.get(id);
+    return fallback ? ensureValidReport(fallback) : null;
   }
 }
 
 export async function getAllReports(): Promise<ScanReport[]> {
-  const memoryReports = Array.from(mockStore.values());
+  const memoryReports = Array.from(mockStore.values()).map(ensureValidReport);
 
   if (config.isMockMode || !pool) {
     return memoryReports.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -128,7 +141,7 @@ export async function getAllReports(): Promise<ScanReport[]> {
       await ensureTable(client);
       const res = await client.query('SELECT data FROM reports ORDER BY created_at DESC LIMIT 100');
       if (res.rows.length > 0) {
-        const dbReports = res.rows.map((r: any) => r.data as ScanReport);
+        const dbReports = res.rows.map((r: any) => ensureValidReport(r.data as ScanReport));
         for (const r of dbReports) {
           mockStore.set(r.id, r);
         }

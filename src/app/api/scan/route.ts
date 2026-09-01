@@ -27,12 +27,15 @@ async function performScanPipeline(
   preferredProvider?: "deepseek" | "gemini"
 ): Promise<{ id: string; analyzedBy?: string; cascadeNotes?: string[] }> {
   let targetTrimmed = (url || '').trim();
-  let domain = targetTrimmed;
+  let domain = targetTrimmed.replace(/^https?:\/\//i, '').split('/')[0].split('?')[0];
   const t0 = Date.now();
   const id = randomUUID();
 
   try {
-    domain = new URL(targetTrimmed.startsWith('http') ? targetTrimmed : `https://${targetTrimmed}`).hostname;
+    const parsed = new URL(targetTrimmed.startsWith('http') ? targetTrimmed : `https://${targetTrimmed}`).hostname;
+    if (parsed) {
+      domain = parsed;
+    }
   } catch (e) {}
 
   // 0. Predefined Demo Fast-Path
@@ -68,7 +71,12 @@ async function performScanPipeline(
   const browserResult = await inspectUrlWithSolari(targetTrimmed);
 
   try {
-    domain = new URL(browserResult.finalUrl).hostname;
+    if (browserResult.finalUrl && browserResult.finalUrl !== 'about:blank' && !browserResult.finalUrl.startsWith('data:')) {
+      const parsed = new URL(browserResult.finalUrl).hostname;
+      if (parsed) {
+        domain = parsed;
+      }
+    }
   } catch (e) {}
 
   onUpdate?.({ type: 'step', step: 1, label: 'Bypassing Bot Detection & Extracting DOM' });

@@ -89,7 +89,7 @@ export default async function ReportPage(props: { params: Promise<{ id: string }
             
             <div className="space-y-1">
               <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight text-white break-all">
-                {domain}
+                {domain || targetUrl.replace(/^https?:\/\//i, '').split('/')[0] || 'Security Inspection Report'}
               </h1>
               
               <a
