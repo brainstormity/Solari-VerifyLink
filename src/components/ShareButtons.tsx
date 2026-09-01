@@ -12,7 +12,7 @@ export default function ShareButtons({ score, domain }: ShareButtonsProps) {
   const [copied, setCopied] = useState(false);
 
   const getShareText = () => {
-    return `Just audited ${domain} with @VerifyLink (powered by @getsolari microVMs). Trust Score: ${score}/100. Check the full safety report: ${window.location.href}`;
+    return `Just audited ${domain} with VerifyLink developed by @brainstormity. Trust Score: ${score}/100. Check the full safety report: ${window.location.href}`;
   };
 
   const handleCopy = async () => {
