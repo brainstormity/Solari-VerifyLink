@@ -1,6 +1,7 @@
 import { Solari, BrowserSession } from "@solarisdk/browser";
 import { chromium } from "patchright-core";
 import { config } from "./config";
+import { SolariApiError } from "./types";
 
 export async function inspectUrlWithSolari(targetUrl: string) {
   if (config.isMockMode) {
@@ -31,8 +32,22 @@ export async function inspectUrlWithSolari(targetUrl: string) {
 
   try {
     // 1. Explicitly acquire session ID first
-    const rawSession = await solari.sessions.create({ stealth: true, captcha: true });
-    sessionId = rawSession.id;
+    let rawSession: any;
+    try {
+      rawSession = await solari.sessions.create({ stealth: true, captcha: true });
+      sessionId = rawSession.id;
+    } catch (sessionErr: any) {
+      console.error("Solari session creation failed:", sessionErr);
+      const msg = (sessionErr?.message || "").toLowerCase();
+      const status = sessionErr?.status || sessionErr?.statusCode;
+      if (status === 401 || msg.includes("unauthorized") || msg.includes("api key")) {
+        throw new SolariApiError("Invalid Solari API Key. Please verify SOLARI_API_KEY in .env.", 401);
+      }
+      if (status === 402 || status === 429 || msg.includes("quota") || msg.includes("limit") || msg.includes("credit")) {
+        throw new SolariApiError("Solari API quota or credit limit reached. Please check your Solari account.", status || 429);
+      }
+      throw new SolariApiError(`Solari Cloud Browser session error: ${sessionErr?.message || "Failed to initialize"}`, status);
+    }
 
     // 2. Connect Playwright over the session's WebSocket
     browser = await chromium.connect(rawSession.wsEndpoint);
@@ -118,6 +133,9 @@ export async function inspectUrlWithSolari(targetUrl: string) {
       latencyMs
     };
   } catch (error: any) {
+    if (error instanceof SolariApiError || error?.name === "SolariApiError") {
+      throw error;
+    }
     console.error("Browser inspection encountered error, returning safe baseline:", error?.message || error);
     return {
       finalUrl: normalizedUrl,

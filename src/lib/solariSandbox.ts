@@ -1,5 +1,6 @@
 import { SandboxClient } from "@solarisdk/sandbox";
 import { config } from "./config";
+import { SolariApiError } from "./types";
 
 export async function runSandboxForensics(domain: string) {
   if (config.isMockMode) {
@@ -16,8 +17,21 @@ export async function runSandboxForensics(domain: string) {
 
   const sandboxPromise = (async () => {
     // 1. Create sandbox with short server-side TTL timeout
-    sandbox = await sandboxClient.create({ template: "base", timeoutMs: 30000 } as any);
-    sandboxId = sandbox.sandboxId || sandbox.id || sandbox.session?.id || null;
+    try {
+      sandbox = await sandboxClient.create({ template: "base", timeoutMs: 30000 } as any);
+      sandboxId = sandbox.sandboxId || sandbox.id || sandbox.session?.id || null;
+    } catch (sandboxErr: any) {
+      console.error("Solari Sandbox VM creation failed:", sandboxErr);
+      const msg = (sandboxErr?.message || "").toLowerCase();
+      const status = sandboxErr?.status || sandboxErr?.statusCode;
+      if (status === 401 || msg.includes("unauthorized") || msg.includes("api key")) {
+        throw new SolariApiError("Invalid Solari API Key. Please verify SOLARI_API_KEY in .env.", 401);
+      }
+      if (status === 402 || status === 429 || msg.includes("quota") || msg.includes("limit") || msg.includes("credit")) {
+        throw new SolariApiError("Solari Sandbox quota or credit limit reached. Please check your Solari account.", status || 429);
+      }
+      throw new SolariApiError(`Solari Sandbox VM error: ${sandboxErr?.message || "Failed to initialize"}`, status);
+    }
 
     // 2. Run isolated DNS and WHOIS commands with per-command bounds
     let dnsOutput = "";

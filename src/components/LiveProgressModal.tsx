@@ -12,7 +12,7 @@ const STEPS = [
   { label: "Provisioning Ephemeral Solari Cloud Browser", sub: "Spinning up stealth chromium instance" },
   { label: "Bypassing Bot Detection & Extracting DOM", sub: "Intercepting redirects, scripts & forms" },
   { label: "Detonating in Solari Sandbox MicroVM", sub: "Running isolated DNS & WHOIS diagnostics" },
-  { label: "DeepSeek V4 Threat Reasoning", sub: "Evaluating 4 zero-trust security pillars" },
+  { label: "AI Threat Reasoning (Gemini 3.7 / DeepSeek)", sub: "Evaluating 4 zero-trust security pillars" },
   { label: "Synthesizing Trust Audit Card", sub: "Finalizing cryptographic score & report" }
 ];
 

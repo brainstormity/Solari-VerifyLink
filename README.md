@@ -9,7 +9,7 @@ VerifyLink is an open-source web application that allows users to submit suspici
 1. **User Input:** User pastes a link on the Next.js UI.
 2. **Solari Cloud Browser (< 3s):** Connects via Playwright to an isolated cloud browser in stealth mode. Tracks redirects, captures screenshots, and extracts the DOM.
 3. **Solari Sandbox (< 1.5s):** Provisions a microVM to run fast network forensics (DNS, WHOIS) in complete isolation.
-4. **AI Threat Reasoning:** Feeds the collected DOM and network payload into DeepSeek V4 Flash for a strict structured JSON threat assessment across 4 security pillars.
+4. **AI Threat Reasoning:** Feeds the collected DOM and network payload into LLM threat analysis for strict structured JSON threat assessment across 4 security pillars.
 5. **Report Generation:** Generates a cryptographic Trust Score and interactive visual audit card.
 
 ## Performance Benchmark
@@ -24,7 +24,7 @@ VerifyLink is an open-source web application that allows users to submit suspici
 
 ### Prerequisites
 
-You need API keys for Solari and DeepSeek, and an optional PostgreSQL database connection string.
+You need a **Solari API Key** and either a **Google Gemini API Key** (Free tier available) OR a **DeepSeek API Key** (or both for automatic failover).
 If you don't provide them, the app will automatically run in **Mock Mode** using simulated data for local UI development.
 
 1. Clone the repository and install dependencies:
@@ -33,11 +33,20 @@ npm install
 ```
 
 2. Set up your environment variables:
-Create a `.env.local` file in the root directory:
+Create a `.env` file in the root directory:
 ```env
+# Solari API for Cloud Browser and Sandbox MicroVMs
 SOLARI_API_KEY=your_solari_api_key
-DEEPSEEK_API_KEY=your_deepseek_api_key
+
+# AI Threat Analysis Engines (Provide either one or both)
+# If both are provided, Gemini is used by default with automatic failover to DeepSeek
+GEMINI_API_KEY=your_gemini_api_key    # FREE (20 req/day on Gemini 3.7 Flash)
+DEEPSEEK_API_KEY=your_deepseek_api_key # PAID (requires credits)
+
+# PostgreSQL connection string for saving reports (optional)
 POSTGRES_URL=your_postgres_connection_string
+
+# App URL for absolute link generation (optional)
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
@@ -49,9 +58,9 @@ npm run dev
 4. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 ## Tech Stack
-- **Framework:** Next.js 16 (App Router), TypeScript, Tailwind CSS v4, Framer Motion, Lucide Icons
+- **Framework:** Next.js 16 (App Router with Turbopack), TypeScript, Tailwind CSS v4, Framer Motion, Lucide Icons
 - **Isolation Engines:** `@solarisdk/browser`, `@solarisdk/sandbox`, Playwright
-- **AI Forensics:** DeepSeek V4 Flash (`openai` SDK), Zod validation
+- **AI Forensics:** Google Gemini (`gemini-3.7-flash`, `3.6-flash`, `3.5-flash`, `3.1-flash-lite`), DeepSeek V4 (`deepseek-chat`), Zod schema validation
 - **Persistence:** PostgreSQL (`pg`) with automatic in-memory caching fallback
 
 ## Expanding Beyond the Base Version

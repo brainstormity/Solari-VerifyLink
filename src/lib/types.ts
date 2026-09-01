@@ -30,3 +30,24 @@ export interface ScanReport {
     totalScanTimeMs: number;
   };
 }
+
+export class SolariApiError extends Error {
+  statusCode?: number;
+  constructor(message: string, statusCode?: number) {
+    super(message);
+    this.name = "SolariApiError";
+    this.statusCode = statusCode;
+  }
+}
+
+export class ThreatAnalysisApiError extends Error {
+  provider: "gemini" | "deepseek" | "none";
+  statusCode?: number;
+  constructor(message: string, provider: "gemini" | "deepseek" | "none", statusCode?: number) {
+    super(message);
+    this.name = "ThreatAnalysisApiError";
+    this.provider = provider;
+    this.statusCode = statusCode;
+  }
+}
+

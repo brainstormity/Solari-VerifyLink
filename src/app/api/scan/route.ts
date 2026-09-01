@@ -3,7 +3,7 @@ import { inspectUrlWithSolari } from '@/lib/solariBrowser';
 import { runSandboxForensics } from '@/lib/solariSandbox';
 import { analyzeThreat } from '@/lib/analyzer';
 import { saveReport } from '@/lib/db';
-import { ScanReport } from '@/lib/types';
+import { ScanReport, SolariApiError, ThreatAnalysisApiError } from '@/lib/types';
 import { DEMO_URL_MAP, DEMO_REPORTS } from '@/lib/demoReports';
 import { randomUUID } from 'crypto';
 
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     // 2. Sandbox Forensics (DNS/WHOIS via Solari Sandbox MicroVM)
     const sandboxResult = await runSandboxForensics(domain);
 
-    // 3. DeepSeek V4 Threat Analysis
+    // 3. Threat Analysis (Gemini 3.7 Flash or DeepSeek V4)
     const analysis = await analyzeThreat(
       domain,
       browserResult.finalUrl,
@@ -88,7 +88,25 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ id });
   } catch (error: any) {
-    console.error("Scan Encountered Exception, generating comprehensive threat report:", error);
+    // Graceful error responses for infrastructure / API quota issues
+    if (error instanceof SolariApiError || error?.name === "SolariApiError") {
+      console.error("Scan failed due to Solari API error:", error.message);
+      return NextResponse.json(
+        { error: error.message, code: "SOLARI_API_ERROR" },
+        { status: error.statusCode || 400 }
+      );
+    }
+
+    if (error instanceof ThreatAnalysisApiError || error?.name === "ThreatAnalysisApiError") {
+      console.error("Scan failed due to AI API error:", error.message);
+      return NextResponse.json(
+        { error: error.message, code: "AI_API_ERROR", provider: error.provider },
+        { status: error.statusCode || 400 }
+      );
+    }
+
+    console.error("Scan Encountered Target Network Exception, generating comprehensive threat report:", error);
+
 
     // If an error or connection failure occurred, complete the report as a High-Risk / Unreachable Threat Report instead of crashing
     const fallbackReport: ScanReport = {

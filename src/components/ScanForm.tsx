@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, ArrowRight, ShieldAlert, ShoppingBag, ShieldCheck, Sparkles, Loader2, X, Zap } from 'lucide-react';
+import { Search, ArrowRight, ShieldAlert, ShoppingBag, ShieldCheck, Sparkles, Loader2, X, Zap, AlertCircle } from 'lucide-react';
 import LiveProgressModal from './LiveProgressModal';
 
 const SAMPLES = [
@@ -40,10 +40,12 @@ export default function ScanForm() {
   const [url, setUrl] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [step, setStep] = useState(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleScan = async (targetUrl: string, demoId?: string) => {
     const trimmed = targetUrl.trim();
     if (!trimmed) return;
+    setErrorMessage(null);
     setIsScanning(true);
     setStep(0);
 
@@ -64,24 +66,47 @@ export default function ScanForm() {
       clearInterval(progressInterval);
       setStep(5); // Complete all 5 steps
 
-      if (data.id) {
+      if (res.ok && data.id) {
         setTimeout(() => {
           router.push(`/report/${data.id}`);
         }, 600);
       } else {
-        alert(data.error || "Scan failed");
+        setErrorMessage(data.error || "Scan failed due to an API error. Please check your configuration.");
         setIsScanning(false);
       }
-    } catch (error) {
+    } catch (error: any) {
       clearInterval(progressInterval);
-      alert("An unexpected error occurred during scan");
+      setErrorMessage(error?.message || "An unexpected network error occurred during scan.");
       setIsScanning(false);
     }
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-8 relative z-10">
+    <div className="w-full max-w-4xl mx-auto space-y-6 relative z-10">
       <LiveProgressModal isOpen={isScanning} currentStep={step} />
+      
+      {/* Graceful Error Banner */}
+      {errorMessage && (
+        <div className="bg-rose-950/70 border border-rose-500/40 rounded-2xl p-4 sm:p-5 flex items-start justify-between gap-3 shadow-xl backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-xl bg-rose-500/20 text-rose-400 shrink-0 mt-0.5">
+              <AlertCircle className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-sm font-bold text-rose-200">API Execution Issue</h4>
+              <p className="text-xs sm:text-sm text-rose-300/90 leading-relaxed">{errorMessage}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setErrorMessage(null)}
+            className="text-rose-400 hover:text-rose-200 p-1.5 rounded-lg hover:bg-rose-500/10 transition-colors shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       
       {/* Search Input Box */}
       <div className="relative group">
